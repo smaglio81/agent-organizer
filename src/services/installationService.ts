@@ -5,31 +5,31 @@
 import * as vscode from 'vscode';
 import { Skill, InstalledSkill } from '../types';
 import { GitHubSkillsClient } from '../github/skillsClient';
+import { SkillPathService } from './skillPathService';
 
 export class SkillInstallationService {
     constructor(
         private readonly githubClient: GitHubSkillsClient,
-        private readonly context: vscode.ExtensionContext
+        private readonly context: vscode.ExtensionContext,
+        private readonly pathService: SkillPathService = new SkillPathService()
     ) {}
 
     /**
      * Install a skill to the workspace
      */
     async installSkill(skill: Skill): Promise<boolean> {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        const workspaceFolder = this.pathService.getWorkspaceFolder();
         if (!workspaceFolder) {
             vscode.window.showErrorMessage('No workspace folder open. Please open a folder first.');
             return false;
         }
 
-        const config = vscode.workspace.getConfiguration('agentSkills');
-        const installLocation = config.get<string>('installLocation', '.github/skills');
-        
-        const targetDir = vscode.Uri.joinPath(
-            workspaceFolder.uri,
-            installLocation,
-            skill.name
-        );
+        const targetDir = this.pathService.resolveInstallTarget(skill.name, workspaceFolder);
+
+        if (!targetDir) {
+            vscode.window.showErrorMessage('Failed to resolve install location for this skill.');
+            return false;
+        }
 
         // Check if already installed
         try {
@@ -123,7 +123,7 @@ export class SkillInstallationService {
      * Uninstall a skill from the workspace
      */
     async uninstallSkill(skill: InstalledSkill): Promise<boolean> {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        const workspaceFolder = this.pathService.getWorkspaceFolder();
         if (!workspaceFolder) {
             return false;
         }
@@ -139,7 +139,13 @@ export class SkillInstallationService {
         }
 
         try {
-            const skillDir = vscode.Uri.joinPath(workspaceFolder.uri, skill.location);
+            const skillDir = this.pathService.resolveLocationToUri(skill.location, workspaceFolder);
+
+            if (!skillDir) {
+                vscode.window.showErrorMessage('Failed to resolve skill location.');
+                return false;
+            }
+
             await vscode.workspace.fs.delete(skillDir, { recursive: true, useTrash: true });
             vscode.window.showInformationMessage(`Successfully uninstalled skill "${skill.name}"`);
             return true;
@@ -154,12 +160,18 @@ export class SkillInstallationService {
      * Open the skill folder in the explorer
      */
     async openSkillFolder(skill: InstalledSkill): Promise<void> {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        const workspaceFolder = this.pathService.getWorkspaceFolder();
         if (!workspaceFolder) {
             return;
         }
 
-        const skillDir = vscode.Uri.joinPath(workspaceFolder.uri, skill.location);
+        const skillDir = this.pathService.resolveLocationToUri(skill.location, workspaceFolder);
+
+        if (!skillDir) {
+            vscode.window.showErrorMessage('Failed to resolve skill location.');
+            return;
+        }
+
         const skillMd = vscode.Uri.joinPath(skillDir, 'SKILL.md');
         
         try {

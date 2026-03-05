@@ -2,7 +2,7 @@
   "name": "agent-skills",
   "displayName": "Agent Skills",
   "description": "Agent Skills Marketplace and Toolkit",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "icon": "resources/logo.png",
   "publisher": "formulahendry",
   "engines": {
@@ -218,10 +218,12 @@
           "type": "string",
           "enum": [
             ".github/skills",
-            ".claude/skills"
+            ".claude/skills",
+            "~/.copilot/skills",
+            "~/.claude/skills"
           ],
           "default": ".github/skills",
-          "description": "Where to install skills in the workspace"
+          "description": "Where to install skills in the workspace / user home directory"
         },
         "agentSkills.githubToken": {
           "type": "string",

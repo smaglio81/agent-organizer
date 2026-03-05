@@ -99,6 +99,8 @@ Add custom repositories by modifying this setting:
 Choose where to install skills in your workspace:
 - `.github/skills` (default)
 - `.claude/skills`
+- `~/.copilot/skills`
+- `~/.claude/skills`
 
 ### GitHub Token
 
