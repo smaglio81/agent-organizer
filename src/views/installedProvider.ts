@@ -77,9 +77,6 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
      */
     async scanInstalledSkills(): Promise<InstalledSkill[]> {
         const workspaceFolder = this.pathService.getWorkspaceFolder();
-        if (!workspaceFolder) {
-            return [];
-        }
 
         const fileSystem = this.pathService.getFileSystem();
 
@@ -87,7 +84,10 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         const installed: InstalledSkill[] = [];
 
         for (const location of locations) {
-            const dir = this.pathService.resolveLocationToUri(location, workspaceFolder);
+            const locationWorkspaceFolder = this.pathService.requiresWorkspaceFolder(location)
+                ? workspaceFolder
+                : undefined;
+            const dir = this.pathService.resolveLocationToUri(location, locationWorkspaceFolder);
 
             if (!dir) {
                 continue;

@@ -10,7 +10,7 @@ export class SkillPathService {
     constructor() {}
 
     getScanLocations(): string[] {
-        return ['.github/skills', '.claude/skills', '~/.copilot/skills/', '~/.claude/skills/'];
+        return ['.github/skills', '.claude/skills', '~/.copilot/skills', '~/.claude/skills'];
     }
 
     getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
@@ -30,27 +30,58 @@ export class SkillPathService {
         return config.get<string>('installLocation', '.github/skills');
     }
 
+    isHomeLocation(location: string): boolean {
+        return location.trim().startsWith('~');
+    }
+
+    requiresWorkspaceFolder(location: string): boolean {
+        return !this.isHomeLocation(location);
+    }
+
+    getWorkspaceFolderForLocation(location: string): vscode.WorkspaceFolder | undefined {
+        if (!this.requiresWorkspaceFolder(location)) {
+            return undefined;
+        }
+
+        return this.getWorkspaceFolder();
+    }
+
     resolveLocationToUri(location: string, workspaceFolder?: vscode.WorkspaceFolder): vscode.Uri | undefined {
-        if (location.startsWith('~')) {
+        if (this.isHomeLocation(location)) {
             const resolvedPath = path.join(this.getHomeDirectory(), location.slice(1).replace(/^[/\\]+/, ''));
-            return vscode.Uri.file(resolvedPath);
+            return vscode.Uri.file(this.normalizePath(resolvedPath));
         }
 
         if (!workspaceFolder) {
             return undefined;
         }
 
-        return vscode.Uri.joinPath(workspaceFolder.uri, location);
+        return vscode.Uri.joinPath(workspaceFolder.uri, this.normalizeLocation(location));
     }
 
     resolveInstallTarget(skillName: string, workspaceFolder?: vscode.WorkspaceFolder): vscode.Uri | undefined {
         const installLocation = this.getInstallLocation();
-        const baseDir = this.resolveLocationToUri(installLocation, workspaceFolder);
+        const resolvedWorkspaceFolder = workspaceFolder ?? this.getWorkspaceFolderForLocation(installLocation);
+        const baseDir = this.resolveLocationToUri(installLocation, resolvedWorkspaceFolder);
 
         if (!baseDir) {
             return undefined;
         }
 
         return vscode.Uri.joinPath(baseDir, skillName);
+    }
+
+    private normalizeLocation(location: string): string {
+        return this.normalizePath(location);
+    }
+
+    private normalizePath(value: string): string {
+        const normalized = path.normalize(value);
+        const root = path.parse(normalized).root;
+        if (normalized.length <= root.length) {
+            return normalized;
+        }
+
+        return normalized.replace(/[\\/]+$/, '');
     }
 }

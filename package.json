@@ -223,7 +223,7 @@
             "~/.claude/skills"
           ],
           "default": ".github/skills",
-          "description": "Where to install skills in the workspace / user home directory"
+          "description": "Where to install skills in the workspace. Copilot CLI can also use plugins installed in the users home directory (~/)."
         },
         "agentSkills.githubToken": {
           "type": "string",

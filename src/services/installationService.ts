@@ -18,8 +18,10 @@ export class SkillInstallationService {
      * Install a skill to the workspace
      */
     async installSkill(skill: Skill): Promise<boolean> {
-        const workspaceFolder = this.pathService.getWorkspaceFolder();
-        if (!workspaceFolder) {
+        const installLocation = this.pathService.getInstallLocation();
+        const workspaceFolder = this.pathService.getWorkspaceFolderForLocation(installLocation);
+
+        if (this.pathService.requiresWorkspaceFolder(installLocation) && !workspaceFolder) {
             vscode.window.showErrorMessage('No workspace folder open. Please open a folder first.');
             return false;
         }
@@ -123,8 +125,8 @@ export class SkillInstallationService {
      * Uninstall a skill from the workspace
      */
     async uninstallSkill(skill: InstalledSkill): Promise<boolean> {
-        const workspaceFolder = this.pathService.getWorkspaceFolder();
-        if (!workspaceFolder) {
+        const workspaceFolder = this.pathService.getWorkspaceFolderForLocation(skill.location);
+        if (this.pathService.requiresWorkspaceFolder(skill.location) && !workspaceFolder) {
             return false;
         }
 
@@ -160,8 +162,8 @@ export class SkillInstallationService {
      * Open the skill folder in the explorer
      */
     async openSkillFolder(skill: InstalledSkill): Promise<void> {
-        const workspaceFolder = this.pathService.getWorkspaceFolder();
-        if (!workspaceFolder) {
+        const workspaceFolder = this.pathService.getWorkspaceFolderForLocation(skill.location);
+        if (this.pathService.requiresWorkspaceFolder(skill.location) && !workspaceFolder) {
             return;
         }
 

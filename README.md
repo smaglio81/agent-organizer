@@ -99,8 +99,10 @@ Add custom repositories by modifying this setting:
 Choose where to install skills in your workspace:
 - `.github/skills` (default)
 - `.claude/skills`
-- `~/.copilot/skills`
-- `~/.claude/skills`
+- `~/.copilot/skills` (CLI only)
+- `~/.claude/skills` (CLI only)
+
+Github Copilot CLI can also use skills installed under the users home directory ([link](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills#about-agent-skills)).
 
 ### GitHub Token
 

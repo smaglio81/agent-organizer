@@ -102,6 +102,6 @@ suite('Extension Test Suite', () => {
 		);
 		assert.strictEqual(skills.length, 1);
 		assert.strictEqual(skills[0].name, 'Copilot Skill');
-		assert.strictEqual(skills[0].location, '~/.copilot/skills//my-skill');
+		assert.strictEqual(skills[0].location, '~/.copilot/skills/my-skill');
 	});
 });
