@@ -99,6 +99,21 @@
       {
         "command": "agentSkills.focusMarketplace",
         "title": "Focus Marketplace View"
+      },
+      {
+        "command": "agentSkills.selectInstallLocation",
+        "title": "Install Location",
+        "icon": "$(folder)"
+      },
+      {
+        "command": "agentSkills.expandAll",
+        "title": "Expand All",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "agentSkills.collapseAll",
+        "title": "Collapse All",
+        "icon": "$(collapse-all)"
       }
     ],
     "menus": {
@@ -117,6 +132,21 @@
           "command": "agentSkills.refresh",
           "when": "view == agentSkills.marketplace || view == agentSkills.installed",
           "group": "navigation@2"
+        },
+        {
+          "command": "agentSkills.selectInstallLocation",
+          "when": "view == agentSkills.installed",
+          "group": "navigation@3"
+        },
+        {
+          "command": "agentSkills.expandAll",
+          "when": "view == agentSkills.installed",
+          "group": "navigation@4"
+        },
+        {
+          "command": "agentSkills.collapseAll",
+          "when": "view == agentSkills.installed",
+          "group": "navigation@5"
         }
       ],
       "view/item/context": [
@@ -246,6 +276,9 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "package:vsix": "npx vsce package",
+    "install:vsix": "npx vsce package && node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-skills-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('code --install-extension '+files[files.length-1], {stdio:'inherit'});\"",
+    "uninstall:vsix": "code --uninstall-extension formulahendry.agent-skills",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",

@@ -34,6 +34,18 @@ export function activate(context: vscode.ExtensionContext) {
         treeDataProvider: installedProvider
     });
 
+    // Pass tree view reference to provider for expand/collapse operations
+    installedProvider.setTreeView(installedTreeView);
+
+    // Handle expand/collapse events to persist state
+    installedTreeView.onDidCollapseElement(e => {
+        installedProvider.onDidCollapseElement(e.element);
+    });
+
+    installedTreeView.onDidExpandElement(e => {
+        installedProvider.onDidExpandElement(e.element);
+    });
+
     // Helper to sync installed status with marketplace
     const syncInstalledStatus = async () => {
         await installedProvider.refresh();
@@ -145,6 +157,90 @@ export function activate(context: vscode.ExtensionContext) {
         // Focus marketplace view (used in welcome message)
         vscode.commands.registerCommand('agentSkills.focusMarketplace', () => {
             marketplaceTreeView.reveal(undefined as unknown as SkillTreeItem, { focus: true });
+        }),
+
+        // Select install location
+        vscode.commands.registerCommand('agentSkills.selectInstallLocation', async () => {
+            const config = vscode.workspace.getConfiguration('agentSkills');
+            const currentValue = config.get<string>('installLocation') || '.github/skills';
+            
+            // Get enum values from skillPathService
+            const enumValues = pathService.getScanLocations();
+            
+            // Build quick pick items
+            const items: vscode.QuickPickItem[] = [];
+            
+            // Add enum values
+            for (const value of enumValues) {
+                items.push({
+                    label: value,
+                    description: value === currentValue ? '(current)' : undefined
+                });
+            }
+            
+            // Add current value if not in enum
+            if (!enumValues.includes(currentValue)) {
+                items.unshift({
+                    label: currentValue,
+                    description: '(current)'
+                });
+            }
+            
+            // Add Custom option
+            items.push({
+                label: 'Custom...',
+                description: 'Edit in settings.json'
+            });
+            
+            // Show quick pick
+            const selected = await vscode.window.showQuickPick(items, {
+                placeHolder: 'Select install location for skills'
+            });
+            
+            if (!selected) {
+                return;
+            }
+            
+            if (selected.label === 'Custom...') {
+                // Open settings.json and position cursor on agentSkills.installLocation
+                await vscode.commands.executeCommand('workbench.action.openSettingsJson');
+                
+                // Give VS Code a moment to open the settings
+                setTimeout(async () => {
+                    const editor = vscode.window.activeTextEditor;
+                    if (editor) {
+                        const document = editor.document;
+                        const text = document.getText();
+                        
+                        // Find the agentSkills.installLocation setting
+                        const searchPattern = '"agentSkills.installLocation"';
+                        const index = text.indexOf(searchPattern);
+                        
+                        if (index !== -1) {
+                            const position = document.positionAt(index);
+                            editor.selection = new vscode.Selection(position, position);
+                            editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+                        } else {
+                            // Setting doesn't exist, add it
+                            vscode.window.showInformationMessage('Add "agentSkills.installLocation" to your settings.json');
+                        }
+                    }
+                }, 100);
+            } else {
+                // Update the configuration
+                await config.update('installLocation', selected.label, vscode.ConfigurationTarget.Global);
+                await installedProvider.refresh();
+            }
+        }),
+
+        // Expand all installed skills locations
+        vscode.commands.registerCommand('agentSkills.expandAll', async () => {
+            await installedProvider.expandAll();
+        }),
+
+        // Collapse all installed skills locations
+        vscode.commands.registerCommand('agentSkills.collapseAll', async () => {
+            await installedProvider.collapseAll();
         })
     ];
 

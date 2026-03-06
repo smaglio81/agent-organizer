@@ -6,6 +6,22 @@ import * as vscode from 'vscode';
 import { InstalledSkill, SkillMetadata } from '../types';
 import { SkillPathService } from '../services/skillPathService';
 
+type TreeNode = LocationTreeItem | InstalledSkillTreeItem;
+
+export class LocationTreeItem extends vscode.TreeItem {
+    constructor(
+        public readonly location: string,
+        public readonly skills: InstalledSkill[],
+        collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Expanded
+    ) {
+        super(location, collapsibleState);
+        
+        this.tooltip = `${skills.length} skill${skills.length !== 1 ? 's' : ''} installed`;
+        this.iconPath = new vscode.ThemeIcon('folder');
+        this.contextValue = 'location';
+    }
+}
+
 export class InstalledSkillTreeItem extends vscode.TreeItem {
     constructor(
         public readonly installedSkill: InstalledSkill
@@ -23,18 +39,26 @@ export class InstalledSkillTreeItem extends vscode.TreeItem {
     }
 }
 
-export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<InstalledSkillTreeItem> {
-    private _onDidChangeTreeData = new vscode.EventEmitter<InstalledSkillTreeItem | undefined | null | void>();
+export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<TreeNode> {
+    private _onDidChangeTreeData = new vscode.EventEmitter<TreeNode | undefined | null | void>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private installedSkills: InstalledSkill[] = [];
     private readonly pathService: SkillPathService;
+    private collapsedLocations: Set<string>;
+    private readonly COLLAPSED_STATE_KEY = 'agentSkills.collapsedLocations';
+    private treeView?: vscode.TreeView<TreeNode>;
 
     constructor(
         private readonly context: vscode.ExtensionContext,
         pathService?: SkillPathService
     ) {
         this.pathService = pathService ?? new SkillPathService();
+        
+        // Load collapsed state
+        this.collapsedLocations = new Set(
+            this.context.workspaceState.get<string[]>(this.COLLAPSED_STATE_KEY, [])
+        );
 
         // Scan installed skills on initialization
         this.scanInstalledSkills().then(skills => {
@@ -49,6 +73,71 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     async refresh(): Promise<void> {
         this.installedSkills = await this.scanInstalledSkills();
         this._onDidChangeTreeData.fire();
+    }
+
+    /**
+     * Set the tree view reference for expand/collapse operations
+     */
+    setTreeView(treeView: vscode.TreeView<TreeNode>): void {
+        this.treeView = treeView;
+    }
+
+    /**
+     * Expand all locations
+     */
+    async expandAll(): Promise<void> {
+        this.collapsedLocations.clear();
+        await this.saveCollapsedState();
+        
+        if (this.treeView) {
+            const groups = this.groupSkillsByLocation();
+            const locationItems = Object.entries(groups).map(([location, skills]) => 
+                new LocationTreeItem(location, skills, vscode.TreeItemCollapsibleState.Expanded)
+            );
+            
+            for (const item of locationItems) {
+                try {
+                    await this.treeView.reveal(item, { expand: true });
+                } catch {
+                    // Item might not be visible yet, ignore
+                }
+            }
+        }
+    }
+
+    /**
+     * Collapse all locations
+     */
+    async collapseAll(): Promise<void> {
+        const groups = this.groupSkillsByLocation();
+        for (const location of Object.keys(groups)) {
+            this.collapsedLocations.add(location);
+        }
+        await this.saveCollapsedState();
+        
+        if (this.treeView) {
+            const locationItems = Object.entries(groups).map(([location, skills]) => 
+                new LocationTreeItem(location, skills, vscode.TreeItemCollapsibleState.Collapsed)
+            );
+            
+            for (const item of locationItems) {
+                try {
+                    await this.treeView.reveal(item, { expand: false });
+                } catch {
+                    // Item might not be visible yet, ignore
+                }
+            }
+        }
+    }
+
+    /**
+     * Save collapsed state to workspace storage
+     */
+    private async saveCollapsedState(): Promise<void> {
+        await this.context.workspaceState.update(
+            this.COLLAPSED_STATE_KEY,
+            Array.from(this.collapsedLocations)
+        );
     }
 
     /**
@@ -70,6 +159,26 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
      */
     isSkillInstalled(skillName: string): boolean {
         return this.installedSkills.some(s => s.name === skillName);
+    }
+
+    /**
+     * Group skills by their base location
+     */
+    private groupSkillsByLocation(): Record<string, InstalledSkill[]> {
+        const groups: Record<string, InstalledSkill[]> = {};
+        
+        for (const skill of this.installedSkills) {
+            // Extract base location (remove the skill name from the path)
+            const lastSlash = skill.location.lastIndexOf('/');
+            const baseLocation = lastSlash > 0 ? skill.location.substring(0, lastSlash) : skill.location;
+            
+            if (!groups[baseLocation]) {
+                groups[baseLocation] = [];
+            }
+            groups[baseLocation].push(skill);
+        }
+        
+        return groups;
     }
 
     /**
@@ -162,19 +271,58 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         return metadata;
     }
 
-    getTreeItem(element: InstalledSkillTreeItem): vscode.TreeItem {
+getTreeItem(element: TreeNode): vscode.TreeItem {
+        // Handle collapse state changes
+        if (element instanceof LocationTreeItem) {
+            element.collapsibleState = this.collapsedLocations.has(element.location) 
+                ? vscode.TreeItemCollapsibleState.Collapsed 
+                : vscode.TreeItemCollapsibleState.Expanded;
+        }
         return element;
     }
 
-    getChildren(element?: InstalledSkillTreeItem): vscode.ProviderResult<InstalledSkillTreeItem[]> {
-        if (element) {
+    getChildren(element?: TreeNode): vscode.ProviderResult<TreeNode[]> {
+        if (element instanceof InstalledSkillTreeItem) {
+            // Skills have no children
             return [];
         }
         
+        if (element instanceof LocationTreeItem) {
+            // Return skills for this location
+            return element.skills.map(skill => new InstalledSkillTreeItem(skill));
+        }
+        
+        // Root level - return location groups
         if (this.installedSkills.length === 0) {
             return [];
         }
         
-        return this.installedSkills.map(skill => new InstalledSkillTreeItem(skill));
+        const groups = this.groupSkillsByLocation();
+        return Object.entries(groups).map(([location, skills]) => {
+            const collapsibleState = this.collapsedLocations.has(location) 
+                ? vscode.TreeItemCollapsibleState.Collapsed 
+                : vscode.TreeItemCollapsibleState.Expanded;
+            return new LocationTreeItem(location, skills, collapsibleState);
+        });
+    }
+
+    /**
+     * Handle tree item expansion/collapse
+     */
+    onDidCollapseElement(element: TreeNode): void {
+        if (element instanceof LocationTreeItem) {
+            this.collapsedLocations.add(element.location);
+            this.saveCollapsedState();
+        }
+    }
+
+    /**
+     * Handle tree item expansion
+     */
+    onDidExpandElement(element: TreeNode): void {
+        if (element instanceof LocationTreeItem) {
+            this.collapsedLocations.delete(element.location);
+            this.saveCollapsedState();
+        }
     }
 }
