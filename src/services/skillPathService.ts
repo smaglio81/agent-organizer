@@ -56,7 +56,8 @@ export class SkillPathService {
             return undefined;
         }
 
-        return vscode.Uri.joinPath(workspaceFolder.uri, this.normalizeLocation(location));
+        const segments = this.normalizeLocation(location).split(/[\\/]+/).filter(s => s.length > 0);
+        return vscode.Uri.joinPath(workspaceFolder.uri, ...segments);
     }
 
     resolveInstallTarget(skillName: string, workspaceFolder?: vscode.WorkspaceFolder): vscode.Uri | undefined {
