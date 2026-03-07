@@ -127,6 +127,7 @@ suite('Extension Test Suite', () => {
 		let missingDirReadAttempts = 0;
 
 		const mockFs: vscode.FileSystem = {
+			isWritableFileSystem: () => true,
 			stat: async (uri: vscode.Uri) => {
 				if (existingDirectories.has(normalizePath(uri.fsPath))) {
 					return { type: vscode.FileType.Directory, ctime: 0, mtime: 0, size: 0 };
