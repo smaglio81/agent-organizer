@@ -9,6 +9,7 @@ import { MarketplaceTreeDataProvider, SkillTreeItem } from './views/marketplaceP
 import { InstalledSkillsTreeDataProvider, InstalledSkillTreeItem } from './views/installedProvider';
 import { SkillDetailPanel } from './views/skillDetailPanel';
 import { SkillInstallationService } from './services/installationService';
+import { SkillPathService } from './services/skillPathService';
 import { Skill, InstalledSkill } from './types';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -16,11 +17,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Initialize services
     const githubClient = new GitHubSkillsClient(context);
-    const installationService = new SkillInstallationService(githubClient, context);
+    const pathService = new SkillPathService();
+    const installationService = new SkillInstallationService(githubClient, context, pathService);
 
     // Initialize view providers
     const marketplaceProvider = new MarketplaceTreeDataProvider(githubClient, context);
-    const installedProvider = new InstalledSkillsTreeDataProvider(context);
+    const installedProvider = new InstalledSkillsTreeDataProvider(context, pathService);
 
     // Register TreeViews
     const marketplaceTreeView = vscode.window.createTreeView('agentSkills.marketplace', {

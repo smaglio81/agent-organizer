@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import { InstalledSkill, SkillMetadata } from '../types';
+import { SkillPathService } from '../services/skillPathService';
 
 export class InstalledSkillTreeItem extends vscode.TreeItem {
     constructor(
@@ -27,8 +28,14 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private installedSkills: InstalledSkill[] = [];
+    private readonly pathService: SkillPathService;
 
-    constructor(private readonly context: vscode.ExtensionContext) {
+    constructor(
+        private readonly context: vscode.ExtensionContext,
+        pathService?: SkillPathService
+    ) {
+        this.pathService = pathService ?? new SkillPathService();
+
         // Scan installed skills on initialization
         this.scanInstalledSkills().then(skills => {
             this.installedSkills = skills;
@@ -66,29 +73,39 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     }
 
     /**
-     * Scan workspace for installed skills
+     * Scan configured locations (workspace and user directories) for installed skills
      */
     async scanInstalledSkills(): Promise<InstalledSkill[]> {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-            return [];
-        }
+        const workspaceFolder = this.pathService.getWorkspaceFolder();
 
-        const locations = ['.github/skills', '.claude/skills'];
+        const fileSystem = this.pathService.getFileSystem();
+
+        const locations = this.pathService.getScanLocations();
         const installed: InstalledSkill[] = [];
 
         for (const location of locations) {
-            const dir = vscode.Uri.joinPath(workspaceFolder.uri, location);
+            const locationWorkspaceFolder = this.pathService.requiresWorkspaceFolder(location)
+                ? workspaceFolder
+                : undefined;
+            const dir = this.pathService.resolveLocationToUri(location, locationWorkspaceFolder);
+
+            if (!dir) {
+                continue;
+            }
+
+            if (!(await this.directoryExists(dir, fileSystem))) {
+                continue;
+            }
             
             try {
-                const entries = await vscode.workspace.fs.readDirectory(dir);
+                const entries = await fileSystem.readDirectory(dir);
                 
                 for (const [name, type] of entries) {
-                    if (type === vscode.FileType.Directory) {
+                    if ((type & vscode.FileType.Directory) !== 0) {
                         const skillMdUri = vscode.Uri.joinPath(dir, name, 'SKILL.md');
                         
                         try {
-                            const content = await vscode.workspace.fs.readFile(skillMdUri);
+                            const content = await fileSystem.readFile(skillMdUri);
                             const contentStr = new TextDecoder().decode(content);
                             const metadata = this.parseSkillMdMetadata(contentStr);
                             
@@ -109,6 +126,15 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         }
 
         return installed;
+    }
+
+    private async directoryExists(uri: vscode.Uri, fileSystem: vscode.FileSystem): Promise<boolean> {
+        try {
+            const stat = await fileSystem.stat(uri);
+            return (stat.type & vscode.FileType.Directory) !== 0;
+        } catch {
+            return false;
+        }
     }
 
     /**

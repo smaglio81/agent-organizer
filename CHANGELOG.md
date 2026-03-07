@@ -6,4 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.0.3]
+
+### Added
+
+- Added support for skills directories `~/.copilot/skills` and `~/.claude/skills`.
+
+## [0.0.2]
+
 - Initial release
