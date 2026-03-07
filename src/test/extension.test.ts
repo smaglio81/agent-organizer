@@ -164,8 +164,7 @@ suite('Extension Test Suite', () => {
 			writeFile: async () => undefined,
 			delete: async () => undefined,
 			rename: async () => undefined,
-			copy: async () => undefined,
-			isWritableFileSystem: () => true
+			copy: async () => undefined
 		};
 
 		class TestSkillPathService extends SkillPathService {
