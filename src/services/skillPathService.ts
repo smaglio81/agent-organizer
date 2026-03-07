@@ -31,7 +31,8 @@ export class SkillPathService {
     }
 
     isHomeLocation(location: string): boolean {
-        return location.trim().startsWith('~');
+        const loc = location.trim();
+        return loc.startsWith('~');
     }
 
     requiresWorkspaceFolder(location: string): boolean {
@@ -47,8 +48,9 @@ export class SkillPathService {
     }
 
     resolveLocationToUri(location: string, workspaceFolder?: vscode.WorkspaceFolder): vscode.Uri | undefined {
-        if (this.isHomeLocation(location)) {
-            const resolvedPath = path.join(this.getHomeDirectory(), location.slice(1).replace(/^[/\\]+/, ''));
+        const loc = location.trim();
+        if (this.isHomeLocation(loc)) {
+            const resolvedPath = path.join(this.getHomeDirectory(), loc.slice(1).replace(/^[/\\]+/, ''));
             return vscode.Uri.file(this.normalizePath(resolvedPath));
         }
 
@@ -56,7 +58,7 @@ export class SkillPathService {
             return undefined;
         }
 
-        const segments = this.normalizeWorkspaceLocation(location).split(/[\\/]+/).filter(s => s.length > 0);
+        const segments = this.normalizeWorkspaceLocation(loc).split(/[\\/]+/).filter(s => s.length > 0);
         return vscode.Uri.joinPath(workspaceFolder.uri, ...segments);
     }
 

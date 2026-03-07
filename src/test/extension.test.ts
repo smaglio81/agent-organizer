@@ -74,6 +74,44 @@ suite('Extension Test Suite', () => {
 		});
 	});
 
+	suite('SkillPathService.resolveLocationToUri whitespace trimming', () => {
+		class TrimTestSkillPathService extends SkillPathService {
+			override getHomeDirectory(): string {
+				return '/home/user';
+			}
+
+			override getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
+				return {
+					uri: vscode.Uri.file('/workspace'),
+					name: 'test-workspace',
+					index: 0
+				};
+			}
+		}
+
+		test('resolves home location with leading whitespace correctly', () => {
+			const service = new TrimTestSkillPathService();
+			const result = service.resolveLocationToUri(' ~/.copilot/skills');
+			assert.ok(result, 'Expected a URI for padded home location');
+			assert.ok(!result!.fsPath.includes('~'), 'Path should not contain literal tilde');
+			assert.ok(result!.fsPath.includes('.copilot'), 'Path should include .copilot segment');
+		});
+
+		test('resolves home location with trailing whitespace correctly', () => {
+			const service = new TrimTestSkillPathService();
+			const result = service.resolveLocationToUri('~/.copilot/skills ');
+			assert.ok(result, 'Expected a URI for trailing-padded home location');
+			assert.ok(!result!.fsPath.includes('~'), 'Path should not contain literal tilde');
+		});
+
+		test('isHomeLocation detects tilde with surrounding whitespace', () => {
+			const service = new TrimTestSkillPathService();
+			assert.strictEqual(service.isHomeLocation(' ~/.copilot/skills'), true);
+			assert.strictEqual(service.isHomeLocation('~/.copilot/skills '), true);
+			assert.strictEqual(service.isHomeLocation('  ~  '), true);
+		});
+	});
+
 	test('scanInstalledSkills expands ~ paths and skips missing directories before readDirectory', async () => {
 		const workspaceRoot = path.join(os.tmpdir(), 'agent-skills-test-workspace');
 		const workspaceUri = vscode.Uri.file(workspaceRoot);
