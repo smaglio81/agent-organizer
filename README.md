@@ -21,10 +21,7 @@ A VS Code extension that provides a marketplace for discovering, installing, and
 
 ## Installation
 
-1. Open VS Code
-2. Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
-3. Search for "Agent Skills"
-4. Click Install
+Install: [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=formulahendry.agent-skills) | [Open in VS Code](https://vscode.dev/redirect?url=vscode%3Aextension%2Fformulahendry.agent-skills) | [Open VSX Marketplace](https://open-vsx.org/extension/formulahendry/agent-skills)
 
 ## Quick Start
 
