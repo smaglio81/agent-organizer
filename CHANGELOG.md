@@ -4,8 +4,6 @@ All notable changes to the "agent-skills" extension will be documented in this f
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
-
 ## [0.0.3]
 
 ### Added
@@ -13,5 +11,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added support for skills directories `~/.copilot/skills` and `~/.claude/skills`.
 
 ## [0.0.2]
+
+### Added
+
+- Add Microsoft Docs MCP skills
+
+## [0.0.1]
 
 - Initial release
