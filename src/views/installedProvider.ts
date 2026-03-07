@@ -73,7 +73,7 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     }
 
     /**
-     * Scan workspace for installed skills
+     * Scan configured locations (workspace and user directories) for installed skills
      */
     async scanInstalledSkills(): Promise<InstalledSkill[]> {
         const workspaceFolder = this.pathService.getWorkspaceFolder();
@@ -101,7 +101,7 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
                 const entries = await fileSystem.readDirectory(dir);
                 
                 for (const [name, type] of entries) {
-                    if (type === vscode.FileType.Directory) {
+                    if ((type & vscode.FileType.Directory) !== 0) {
                         const skillMdUri = vscode.Uri.joinPath(dir, name, 'SKILL.md');
                         
                         try {
@@ -131,7 +131,7 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     private async directoryExists(uri: vscode.Uri, fileSystem: vscode.FileSystem): Promise<boolean> {
         try {
             const stat = await fileSystem.stat(uri);
-            return stat.type === vscode.FileType.Directory;
+            return (stat.type & vscode.FileType.Directory) !== 0;
         } catch {
             return false;
         }
