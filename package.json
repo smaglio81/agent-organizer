@@ -77,6 +77,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "agentSkills.refreshInstalled",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "agentSkills.viewDetails",
         "title": "View Skill Details",
         "icon": "$(info)"
@@ -130,7 +135,12 @@
         },
         {
           "command": "agentSkills.refresh",
-          "when": "view == agentSkills.marketplace || view == agentSkills.installed",
+          "when": "view == agentSkills.marketplace",
+          "group": "navigation@2"
+        },
+        {
+          "command": "agentSkills.refreshInstalled",
+          "when": "view == agentSkills.installed",
           "group": "navigation@2"
         },
         {
@@ -253,8 +263,10 @@
         "agentSkills.installLocation": {
           "type": "string",
           "enum": [
+            ".agents/skills",
             ".github/skills",
             ".claude/skills",
+            "~/.agents/skills",
             "~/.copilot/skills",
             "~/.claude/skills"
           ],

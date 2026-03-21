@@ -12,7 +12,7 @@ export class LocationTreeItem extends vscode.TreeItem {
     constructor(
         public readonly location: string,
         public readonly skills: InstalledSkill[],
-        collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Expanded
+        collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Collapsed
     ) {
         super(location, collapsibleState);
         
@@ -48,6 +48,7 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     private collapsedLocations: Set<string>;
     private readonly COLLAPSED_STATE_KEY = 'agentSkills.collapsedLocations';
     private treeView?: vscode.TreeView<TreeNode>;
+    private locationItems: Map<string, LocationTreeItem> = new Map();
 
     constructor(
         private readonly context: vscode.ExtensionContext,
@@ -88,21 +89,20 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     async expandAll(): Promise<void> {
         this.collapsedLocations.clear();
         await this.saveCollapsedState();
-        
+
+        // Reveal current items (they're already in the tree, just collapsed).
+        // reveal() requires getParent() to be implemented — see below.
         if (this.treeView) {
-            const groups = this.groupSkillsByLocation();
-            const locationItems = Object.entries(groups).map(([location, skills]) => 
-                new LocationTreeItem(location, skills, vscode.TreeItemCollapsibleState.Expanded)
-            );
-            
-            for (const item of locationItems) {
+            for (const item of this.locationItems.values()) {
                 try {
                     await this.treeView.reveal(item, { expand: true });
                 } catch {
-                    // Item might not be visible yet, ignore
+                    // ignore
                 }
             }
         }
+
+        this._onDidChangeTreeData.fire();
     }
 
     /**
@@ -114,20 +114,7 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
             this.collapsedLocations.add(location);
         }
         await this.saveCollapsedState();
-        
-        if (this.treeView) {
-            const locationItems = Object.entries(groups).map(([location, skills]) => 
-                new LocationTreeItem(location, skills, vscode.TreeItemCollapsibleState.Collapsed)
-            );
-            
-            for (const item of locationItems) {
-                try {
-                    await this.treeView.reveal(item, { expand: false });
-                } catch {
-                    // Item might not be visible yet, ignore
-                }
-            }
-        }
+        this._onDidChangeTreeData.fire();
     }
 
     /**
@@ -271,7 +258,7 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         return metadata;
     }
 
-getTreeItem(element: TreeNode): vscode.TreeItem {
+    getTreeItem(element: TreeNode): vscode.TreeItem {
         // Handle collapse state changes
         if (element instanceof LocationTreeItem) {
             element.collapsibleState = this.collapsedLocations.has(element.location) 
@@ -279,6 +266,14 @@ getTreeItem(element: TreeNode): vscode.TreeItem {
                 : vscode.TreeItemCollapsibleState.Expanded;
         }
         return element;
+    }
+
+    // Required by VS Code for TreeView.reveal() to work.
+    getParent(element: TreeNode): vscode.ProviderResult<TreeNode> {
+        if (element instanceof InstalledSkillTreeItem) {
+            return this.locationItems.get(element.installedSkill.location);
+        }
+        return undefined; // LocationTreeItems are root-level
     }
 
     getChildren(element?: TreeNode): vscode.ProviderResult<TreeNode[]> {
@@ -298,12 +293,18 @@ getTreeItem(element: TreeNode): vscode.TreeItem {
         }
         
         const groups = this.groupSkillsByLocation();
-        return Object.entries(groups).map(([location, skills]) => {
+        const nextLocationItems = new Map<string, LocationTreeItem>();
+        const items = Object.entries(groups).map(([location, skills]) => {
             const collapsibleState = this.collapsedLocations.has(location) 
                 ? vscode.TreeItemCollapsibleState.Collapsed 
                 : vscode.TreeItemCollapsibleState.Expanded;
-            return new LocationTreeItem(location, skills, collapsibleState);
+            const item = new LocationTreeItem(location, skills, collapsibleState);
+            nextLocationItems.set(location, item);
+            return item;
         });
+
+        this.locationItems = nextLocationItems;
+        return items;
     }
 
     /**

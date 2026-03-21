@@ -46,7 +46,7 @@ export class SourceTreeItem extends vscode.TreeItem {
         public readonly sourceName: string,
         public readonly skills: Skill[]
     ) {
-        super(sourceName, vscode.TreeItemCollapsibleState.Expanded);
+        super(sourceName, vscode.TreeItemCollapsibleState.Collapsed);
         this.iconPath = new vscode.ThemeIcon('github');
         this.description = `${skills.length} skill${skills.length !== 1 ? 's' : ''}`;
         this.contextValue = 'source';

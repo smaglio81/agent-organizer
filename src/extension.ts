@@ -70,13 +70,16 @@ export function activate(context: vscode.ExtensionContext) {
             marketplaceProvider.clearSearch();
         }),
 
-        // Refresh marketplace and installed
+        // Refresh marketplace only
         vscode.commands.registerCommand('agentSkills.refresh', async () => {
-            await Promise.all([
-                marketplaceProvider.refresh(),
-                installedProvider.refresh()
-            ]);
-            await syncInstalledStatus();
+            await marketplaceProvider.refresh();
+            marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
+        }),
+
+        // Refresh installed skills only
+        vscode.commands.registerCommand('agentSkills.refreshInstalled', async () => {
+            await installedProvider.refresh();
+            marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
         }),
 
         // View skill details - opens in editor area as WebviewPanel
@@ -241,21 +244,24 @@ export function activate(context: vscode.ExtensionContext) {
         // Collapse all installed skills locations
         vscode.commands.registerCommand('agentSkills.collapseAll', async () => {
             await installedProvider.collapseAll();
+            // Use the built-in command to actually collapse the tree widget,
+            // since TreeDataProvider has no API to programmatically collapse nodes.
+            await vscode.commands.executeCommand('workbench.actions.treeView.agentSkills.installed.collapseAll');
         })
     ];
 
     context.subscriptions.push(...commands, marketplaceTreeView, installedTreeView);
 
     // Watch for workspace skill folder changes
-    const skillsWatcher = vscode.workspace.createFileSystemWatcher('**/.github/skills/*/SKILL.md');
-    const claudeSkillsWatcher = vscode.workspace.createFileSystemWatcher('**/.claude/skills/*/SKILL.md');
+    const skillFolderPaths = ['.github/skills', '.claude/skills', '.agents/skills'];
+    const skillWatchers = skillFolderPaths.map(path => {
+        const watcher = vscode.workspace.createFileSystemWatcher(`**/${path}/*/SKILL.md`);
+        watcher.onDidCreate(() => syncInstalledStatus());
+        watcher.onDidDelete(() => syncInstalledStatus());
+        return watcher;
+    });
 
-    skillsWatcher.onDidCreate(() => syncInstalledStatus());
-    skillsWatcher.onDidDelete(() => syncInstalledStatus());
-    claudeSkillsWatcher.onDidCreate(() => syncInstalledStatus());
-    claudeSkillsWatcher.onDidDelete(() => syncInstalledStatus());
-
-    context.subscriptions.push(skillsWatcher, claudeSkillsWatcher);
+    context.subscriptions.push(...skillWatchers);
 
     // Listen for configuration changes
     context.subscriptions.push(
