@@ -206,7 +206,15 @@ suite('Extension Test Suite', () => {
 		}
 
 		const pathService = new TestSkillPathService();
-		const provider = new InstalledSkillsTreeDataProvider({} as vscode.ExtensionContext, pathService);
+		const mockContext = {
+			workspaceState: {
+				get: () => [],
+				update: async () => undefined,
+				keys: () => []
+			},
+			subscriptions: []
+		} as unknown as vscode.ExtensionContext;
+		const provider = new InstalledSkillsTreeDataProvider(mockContext, pathService);
 		const skills = await provider.scanInstalledSkills();
 
 		assert.strictEqual(missingDirReadAttempts, 0, 'Missing directories should be skipped before readDirectory');

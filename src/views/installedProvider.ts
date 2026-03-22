@@ -20,6 +20,9 @@ let skillIconUris: Record<SkillDuplicateStatus, vscode.Uri>;
  * Initialize icons from extension resources
  */
 export function initializeIcons(context: vscode.ExtensionContext): void {
+    if (!context.extensionUri) {
+        return;
+    }
     folderIconUri = vscode.Uri.joinPath(context.extensionUri, 'resources', 'folder.svg');
     skillIconUris = {
         unique: vscode.Uri.joinPath(context.extensionUri, 'resources', 'skills-icon-purple.svg'),
