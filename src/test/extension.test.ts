@@ -423,6 +423,52 @@ suite('Extension Test Suite', () => {
 		});
 	});
 
+	suite('Skill File and Folder Operations', () => {
+		test('add and delete a file inside a skill folder', async () => {
+			const tmpBase = path.join(os.tmpdir(), `agent-skills-file-test-${Date.now()}`);
+			const skillDir = vscode.Uri.file(path.join(tmpBase, 'my-skill'));
+			await vscode.workspace.fs.createDirectory(skillDir);
+
+			try {
+				// Add file
+				const fileUri = vscode.Uri.joinPath(skillDir, 'notes.txt');
+				await vscode.workspace.fs.writeFile(fileUri, new Uint8Array());
+				const stat = await vscode.workspace.fs.stat(fileUri);
+				assert.ok(stat, 'Created file should exist');
+
+				// Delete file
+				await vscode.workspace.fs.delete(fileUri);
+				let exists = true;
+				try { await vscode.workspace.fs.stat(fileUri); } catch { exists = false; }
+				assert.strictEqual(exists, false, 'Deleted file should not exist');
+			} finally {
+				await vscode.workspace.fs.delete(vscode.Uri.file(tmpBase), { recursive: true });
+			}
+		});
+
+		test('add and delete a folder inside a skill folder', async () => {
+			const tmpBase = path.join(os.tmpdir(), `agent-skills-folder-test-${Date.now()}`);
+			const skillDir = vscode.Uri.file(path.join(tmpBase, 'my-skill'));
+			await vscode.workspace.fs.createDirectory(skillDir);
+
+			try {
+				// Add folder
+				const folderUri = vscode.Uri.joinPath(skillDir, 'sub-folder');
+				await vscode.workspace.fs.createDirectory(folderUri);
+				const stat = await vscode.workspace.fs.stat(folderUri);
+				assert.strictEqual(stat.type & vscode.FileType.Directory, vscode.FileType.Directory, 'Created folder should be a directory');
+
+				// Delete folder
+				await vscode.workspace.fs.delete(folderUri, { recursive: true });
+				let exists = true;
+				try { await vscode.workspace.fs.stat(folderUri); } catch { exists = false; }
+				assert.strictEqual(exists, false, 'Deleted folder should not exist');
+			} finally {
+				await vscode.workspace.fs.delete(vscode.Uri.file(tmpBase), { recursive: true });
+			}
+		});
+	});
+
 	suite('parseGitHubUrl', () => {
 		// --- Valid URLs ---
 

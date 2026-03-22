@@ -30,12 +30,21 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
     - On Skill Folder Locations
       - Delete (and inline trash icon)
     - On Skill
+      - "Add File" — creates a new empty file and opens it in the editor.
+      - "Add Folder" — creates a new subfolder.
       - "Move to..." - moves a skill folder to a different scan location via QuickPick selector showing current location.
       - "Copy to..." — copies a skill folder to a different scan location, keeping the original in place.
       - "Update older skill copies with latest" - on newest (green) duplicate skills — copies the newest version to all other locations with older copies.
       - "Get latest copy of skill" - on older (orange) duplicate skills — replaces the older copy with the newest version.
       - "Delete" (in addition to the existing inline trash icon).
       - "Show in Marketplace" — reveals and highlights the matching skill in the Marketplace tree view.
+    - On Skill Files
+      - "Rename" — renames the file within the skill folder.
+      - "Delete" — deletes the file (moved to trash).
+    - On Skill Folders (subfolders within a skill)
+      - "Add File" — creates a new empty file and opens it in the editor.
+      - "Add Folder" — creates a new subfolder.
+      - "Delete" — deletes the folder and its contents (moved to trash).
   - Toolbar
     - Search - search icon opens an input box to filter skills by name or description. Clear (X) icon appears when a search is active. Location groups with no matching skills are hidden.
     - Expand All / Collapse All buttons
@@ -58,6 +67,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Scan locations for the Installed view are now sourced from the `chat.agentSkillsLocations` setting (maintained by VS Code) instead of being hardcoded. Falls back to the previous default set of six locations if the setting is not configured.
 - Installed tree view UX improvements: collapse/expand state persistence, marketplace default collapsed state, split refresh commands.
 - Split `agentSkills.refresh` into two commands: `agentSkills.refresh` (marketplace only) and `agentSkills.refreshInstalled` (installed only).
+- Installed Skills view initially shows "Loading ..." and then "Searching for installed skills..." with a spinner during the initial scan.
 
 ## [0.0.3]
 

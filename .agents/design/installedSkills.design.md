@@ -91,6 +91,8 @@ All actions appear in the `agentSkills.installed` view title bar.
 
 | Menu Item | Command | Visibility | Description |
 |---|---|---|---|
+| Add File | `agentSkills.addFile` | Always | Prompts for a file name, creates an empty file inside the skill folder, and opens it in the editor. |
+| Add Folder | `agentSkills.addFolder` | Always | Prompts for a folder name and creates a new subfolder inside the skill folder. |
 | Move to... | `agentSkills.moveSkill` | Always | Opens a QuickPick listing all scan locations (current location marked). Moves the skill folder to the selected location. |
 | Copy to... | `agentSkills.copySkill` | Always | Opens a QuickPick listing all scan locations (current location marked). Copies the skill folder to the selected location, keeping the original. |
 | Update older skill copies with latest | `agentSkills.syncSkill` | Newest (green) only | Copies this skill to all other locations that have an older copy. |
@@ -111,6 +113,21 @@ All actions appear in the `agentSkills.installed` view title bar.
 |---|---|---|
 | Delete | `agentSkills.deleteAllSkills` | Deletes all skills under this location folder (moved to trash). |
 
+### SkillFolderTreeItem Right-Click Context Menu
+
+| Menu Item | Command | Description |
+|---|---|---|
+| Add File | `agentSkills.addFile` | Prompts for a file name, creates an empty file inside the subfolder, and opens it in the editor. |
+| Add Folder | `agentSkills.addFolder` | Prompts for a folder name and creates a new subfolder. |
+| Delete | `agentSkills.deleteSkillFolder` | Deletes the folder and its contents (moved to trash). |
+
+### SkillFileTreeItem Right-Click Context Menu
+
+| Menu Item | Command | Description |
+|---|---|---|
+| Rename | `agentSkills.renameFile` | Prompts for a new file name and renames the file. |
+| Delete | `agentSkills.deleteSkillFile` | Deletes the file (moved to trash). |
+
 ---
 
 ## Expand/Collapse State Persistence
@@ -129,7 +146,9 @@ After any refresh or install/uninstall operation, the set of installed skill nam
 
 ---
 
-## Empty State
+## Loading and Empty States
+
+While the initial skill scan is in progress, the view displays "Searching for installed skills..." with a spinning icon. Once the scan completes:
 
 When no skills are installed, a welcome message is shown:
 

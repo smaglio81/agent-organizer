@@ -6,11 +6,27 @@
 import * as vscode from 'vscode';
 import { GitHubSkillsClient } from './github/skillsClient';
 import { MarketplaceTreeDataProvider, SkillTreeItem, SourceTreeItem, FailedSourceTreeItem } from './views/marketplaceProvider';
-import { InstalledSkillsTreeDataProvider, InstalledSkillTreeItem, LocationTreeItem } from './views/installedProvider';
+import { InstalledSkillsTreeDataProvider, InstalledSkillTreeItem, LocationTreeItem, SkillFolderTreeItem, SkillFileTreeItem } from './views/installedProvider';
 import { SkillDetailPanel } from './views/skillDetailPanel';
 import { SkillInstallationService } from './services/installationService';
 import { SkillPathService } from './services/skillPathService';
 import { Skill, InstalledSkill, SkillRepository, isSameRepository, normalizeSeparators, buildGitHubUrl, normalizeRepository } from './types';
+
+/**
+ * Validate a file or folder name: non-empty, no path separators.
+ */
+function validateItemName(value: string | undefined, label: string): string | undefined {
+    if (!value?.trim()) { return `${label} is required`; }
+    if (/[/\\]/.test(value)) { return `${label} cannot contain path separators`; }
+    return undefined;
+}
+
+/**
+ * Resolve the parent URI from a skill or folder tree item.
+ */
+function resolveParentUri(item: InstalledSkillTreeItem | SkillFolderTreeItem): vscode.Uri {
+    return item instanceof InstalledSkillTreeItem ? item.skillUri : item.folderUri;
+}
 
 /**
  * Parse a GitHub URL into its SkillRepository components.
@@ -223,6 +239,58 @@ export function activate(context: vscode.ExtensionContext) {
             if (item?.installedSkill) {
                 await installationService.openSkillFolder(item.installedSkill);
             }
+        }),
+
+        // Add a new file inside a skill or skill subfolder
+        vscode.commands.registerCommand('agentSkills.addFile', async (item: InstalledSkillTreeItem | SkillFolderTreeItem) => {
+            const fileName = await vscode.window.showInputBox({
+                prompt: 'File name',
+                validateInput: value => validateItemName(value, 'File name')
+            });
+            if (!fileName) { return; }
+            const fileUri = vscode.Uri.joinPath(resolveParentUri(item), fileName.trim());
+            await vscode.workspace.fs.writeFile(fileUri, new Uint8Array());
+            await vscode.commands.executeCommand('vscode.open', fileUri);
+            installedProvider.refresh();
+        }),
+
+        // Add a new folder inside a skill or skill subfolder
+        vscode.commands.registerCommand('agentSkills.addFolder', async (item: InstalledSkillTreeItem | SkillFolderTreeItem) => {
+            const folderName = await vscode.window.showInputBox({
+                prompt: 'Folder name',
+                validateInput: value => validateItemName(value, 'Folder name')
+            });
+            if (!folderName) { return; }
+            const folderUri = vscode.Uri.joinPath(resolveParentUri(item), folderName.trim());
+            await vscode.workspace.fs.createDirectory(folderUri);
+            installedProvider.refresh();
+        }),
+
+        // Rename a file inside a skill folder
+        vscode.commands.registerCommand('agentSkills.renameFile', async (item: SkillFileTreeItem) => {
+            const oldName = item.fileName;
+            const parentUri = item.fileUri.with({ path: item.fileUri.path.replace(/\/[^/]+$/, '') });
+            const newName = await vscode.window.showInputBox({
+                prompt: 'New file name',
+                value: oldName,
+                validateInput: value => validateItemName(value, 'File name')
+            });
+            if (!newName || newName.trim() === oldName) { return; }
+            const newUri = vscode.Uri.joinPath(parentUri, newName.trim());
+            await vscode.workspace.fs.rename(item.fileUri, newUri);
+            installedProvider.refresh();
+        }),
+
+        // Delete a file inside a skill folder (moved to trash)
+        vscode.commands.registerCommand('agentSkills.deleteSkillFile', async (item: SkillFileTreeItem) => {
+            await vscode.workspace.fs.delete(item.fileUri, { useTrash: true });
+            installedProvider.refresh();
+        }),
+
+        // Delete a subfolder inside a skill folder (moved to trash)
+        vscode.commands.registerCommand('agentSkills.deleteSkillFolder', async (item: SkillFolderTreeItem) => {
+            await vscode.workspace.fs.delete(item.folderUri, { recursive: true, useTrash: true });
+            installedProvider.refresh();
         }),
 
         // Move skill to a different location

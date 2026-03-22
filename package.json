@@ -57,7 +57,7 @@
     "viewsWelcome": [
       {
         "view": "agentSkills.installed",
-        "contents": "No skills installed yet.\n[Browse Marketplace](command:agentSkills.focusMarketplace)"
+        "contents": "Loading ...\n[Browse Marketplace](command:agentSkills.focusMarketplace)"
       }
     ],
     "commands": [
@@ -168,6 +168,31 @@
         "command": "agentSkills.collapseAll",
         "title": "Collapse All",
         "icon": "$(collapse-all)"
+      },
+      {
+        "command": "agentSkills.addFile",
+        "title": "Add File",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "agentSkills.addFolder",
+        "title": "Add Folder",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "agentSkills.renameFile",
+        "title": "Rename",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "agentSkills.deleteSkillFile",
+        "title": "Delete",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "agentSkills.deleteSkillFolder",
+        "title": "Delete",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -253,6 +278,31 @@
           "command": "agentSkills.removeRepository",
           "when": "view == agentSkills.marketplace && (viewItem == source || viewItem == failedSource)",
           "group": "1_delete@1"
+        },
+        {
+          "command": "agentSkills.addFile",
+          "when": "view == agentSkills.installed && (viewItem =~ /^installedSkill/ || viewItem == skillFolder)",
+          "group": "0_add@1"
+        },
+        {
+          "command": "agentSkills.addFolder",
+          "when": "view == agentSkills.installed && (viewItem =~ /^installedSkill/ || viewItem == skillFolder)",
+          "group": "0_add@2"
+        },
+        {
+          "command": "agentSkills.renameFile",
+          "when": "view == agentSkills.installed && viewItem == skillFile",
+          "group": "0_rename@1"
+        },
+        {
+          "command": "agentSkills.deleteSkillFile",
+          "when": "view == agentSkills.installed && viewItem == skillFile",
+          "group": "2_delete@1"
+        },
+        {
+          "command": "agentSkills.deleteSkillFolder",
+          "when": "view == agentSkills.installed && viewItem == skillFolder",
+          "group": "2_delete@1"
         },
         {
           "command": "agentSkills.moveSkill",

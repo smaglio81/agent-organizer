@@ -147,6 +147,8 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     private activeWatchers: vscode.Disposable[] = [];
     /** Current search filter query */
     private searchQuery: string = '';
+    /** True until the initial scan completes */
+    private initialLoading: boolean = true;
 
     constructor(
         private readonly context: vscode.ExtensionContext,
@@ -163,6 +165,7 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         // Scan installed skills on initialization
         this.scanInstalledSkills().then(async skills => {
             this.installedSkills = skills;
+            this.initialLoading = false;
             await this.computeDuplicateStatuses();
             this._onDidChangeTreeData.fire();
         });
@@ -944,6 +947,15 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         }
         
         // Root level
+        if (this.initialLoading) {
+            const loading = new vscode.TreeItem(
+                'Searching for installed skills...',
+                vscode.TreeItemCollapsibleState.None
+            );
+            loading.iconPath = new vscode.ThemeIcon('loading~spin');
+            return [loading as unknown as TreeNode];
+        }
+
         if (this.installedSkills.length === 0) {
             return [];
         }
