@@ -154,6 +154,16 @@ export class SkillInstallationService {
     }
 
     /**
+     * Extract the actual folder basename from a skill's location path.
+     * skill.location is e.g. "~/.copilot/skills/my-skill" — the last segment
+     * is the real folder name on disk, which may differ from skill.name (frontmatter).
+     */
+    private getSkillFolderName(skill: InstalledSkill): string {
+        const lastSlash = skill.location.lastIndexOf('/');
+        return lastSlash >= 0 ? skill.location.substring(lastSlash + 1) : skill.location;
+    }
+
+    /**
      * Move a skill from its current location to a different scan location
      */
     async moveSkill(skill: InstalledSkill): Promise<boolean> {
@@ -161,6 +171,8 @@ export class SkillInstallationService {
         // skill.location includes the skill name (e.g. "~/.copilot/skills/my-skill"),
         // strip the trailing segment to get the parent scan location for display
         const currentParentLocation = skill.location.replace(/\/[^/]+$/, '');
+        // Use the actual folder name on disk, not the frontmatter name
+        const folderName = this.getSkillFolderName(skill);
 
         // Build quick pick items, marking the current location
         const items: vscode.QuickPickItem[] = locations.map(loc => ({
@@ -190,13 +202,13 @@ export class SkillInstallationService {
             return false;
         }
 
-        const targetDir = vscode.Uri.joinPath(targetBaseUri, skill.name);
+        const targetDir = vscode.Uri.joinPath(targetBaseUri, folderName);
 
         // Check if skill already exists at target
         try {
             await vscode.workspace.fs.stat(targetDir);
             const overwrite = await vscode.window.showWarningMessage(
-                `"${skill.name}" already exists at ${targetLocation}. Overwrite?`,
+                `"${folderName}" already exists at ${targetLocation}. Overwrite?`,
                 { modal: true },
                 'Overwrite'
             );
@@ -240,6 +252,8 @@ export class SkillInstallationService {
         const locations = this.pathService.getScanLocations();
         // Strip trailing skill name to get the parent scan location for display
         const currentParentLocation = skill.location.replace(/\/[^/]+$/, '');
+        // Use the actual folder name on disk, not the frontmatter name
+        const folderName = this.getSkillFolderName(skill);
 
         // Build quick pick items, marking the current location
         const items: vscode.QuickPickItem[] = locations.map(loc => ({
@@ -269,13 +283,13 @@ export class SkillInstallationService {
             return false;
         }
 
-        const targetDir = vscode.Uri.joinPath(targetBaseUri, skill.name);
+        const targetDir = vscode.Uri.joinPath(targetBaseUri, folderName);
 
         // Check if skill already exists at target
         try {
             await vscode.workspace.fs.stat(targetDir);
             const overwrite = await vscode.window.showWarningMessage(
-                `"${skill.name}" already exists at ${targetLocation}. Overwrite?`,
+                `"${folderName}" already exists at ${targetLocation}. Overwrite?`,
                 { modal: true },
                 'Overwrite'
             );

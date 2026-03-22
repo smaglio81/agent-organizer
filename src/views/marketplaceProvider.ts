@@ -118,6 +118,13 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
     }
 
     /**
+     * Build a stable unique cache key for a skill (owner/repo/skillPath).
+     */
+    private skillCacheKey(skill: Skill): string {
+        return `${skill.source.owner}/${skill.source.repo}/${skill.skillPath}`;
+    }
+
+    /**
      * Suppress the next config-change-triggered full refresh (used when the
      * extension itself made the config change and handles the update incrementally).
      */
@@ -300,7 +307,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
      */
     getParent(element: SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem): vscode.ProviderResult<SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem> {
         if (element instanceof SkillTreeItem) {
-            const cached = this.cachedSkillItems.get(element.skill.name);
+            const cached = this.cachedSkillItems.get(this.skillCacheKey(element.skill));
             if (cached) {
                 return cached.parent;
             }
@@ -349,7 +356,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
         await new Promise(resolve => setTimeout(resolve, 150));
 
         // Now reveal the skill item (should be cached after source expansion)
-        const cached = this.cachedSkillItems.get(skillName);
+        const cached = this.cachedSkillItems.get(this.skillCacheKey(skill));
         if (cached) {
             try {
                 await this.treeView.reveal(cached.item, { select: true, focus: true });
@@ -411,7 +418,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
                 .map(skill => new SkillTreeItem(skill, this.installedSkillNames.has(skill.name)));
             // Cache skill items with their parent source for getParent / reveal
             for (const item of items) {
-                this.cachedSkillItems.set(item.skill.name, { item, parent: element });
+                this.cachedSkillItems.set(this.skillCacheKey(item.skill), { item, parent: element });
             }
             return items;
         }

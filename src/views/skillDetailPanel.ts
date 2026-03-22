@@ -258,7 +258,6 @@ export class SkillDetailPanel {
      * Generate error HTML
      */
     private _getErrorHtml(message: string): string {
-        const _nonce = this._getNonce();
         return `<!DOCTYPE html>
 <html lang="en">
 <head>

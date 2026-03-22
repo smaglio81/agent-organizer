@@ -399,10 +399,14 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
             return a.localeCompare(b);
         });
 
-        // Compare shared files
+        // Track files unique to each side
+        let extraA = 0;
+        let extraB = 0;
+
         for (const p of sorted) {
             const fileA = mapA.get(p);
             const fileB = mapB.get(p);
+
             if (fileA && fileB) {
                 // If both have text content and it's identical, skip this file
                 if (fileA.content !== undefined && fileB.content !== undefined
@@ -412,12 +416,28 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
                 // Fall back to mtime comparison
                 if (fileA.mtime > fileB.mtime) { return 1; }
                 if (fileA.mtime < fileB.mtime) { return -1; }
+            } else if (fileA && !fileB) {
+                // File exists only in A — A has extra content
+                extraA++;
+            } else {
+                // File exists only in B — B has extra content
+                extraB++;
             }
         }
 
-        // All shared files are equivalent — check for extra files
-        if (filesA.length > filesB.length) { return 1; }
-        if (filesA.length < filesB.length) { return -1; }
+        // All shared files are equivalent — use extra-file counts as tie-break
+        if (extraA > extraB) { return 1; }
+        if (extraA < extraB) { return -1; }
+
+        // Same shared content and same extra count but different file sets
+        // means the copies aren't truly identical — use path-set comparison
+        // as a deterministic tie-break so they aren't misclassified as "same"
+        if (extraA > 0 || extraB > 0) {
+            const pathsA = [...mapA.keys()].sort().join('\0');
+            const pathsB = [...mapB.keys()].sort().join('\0');
+            const cmp = pathsA.localeCompare(pathsB);
+            if (cmp !== 0) { return cmp > 0 ? 1 : -1; }
+        }
 
         return 0;
     }
@@ -575,10 +595,16 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
      * resolved skill location URIs.
      */
     findSkillNameByFileUri(fileUri: vscode.Uri): string | undefined {
-        const filePath = fileUri.fsPath;
+        const filePath = fileUri.fsPath.toLowerCase();
+        const sep = require('path').sep as string;
         for (const skill of this.installedSkills) {
             const uri = this.resolveSkillUri(skill);
-            if (uri && filePath.startsWith(uri.fsPath)) {
+            if (!uri) { continue; }
+            const skillPath = uri.fsPath.toLowerCase();
+            // Ensure match is at a path-segment boundary to avoid
+            // /skills/foo matching /skills/foo-bar
+            if (filePath === skillPath ||
+                filePath.startsWith(skillPath + sep)) {
                 return skill.name;
             }
         }
