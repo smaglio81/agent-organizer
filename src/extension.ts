@@ -10,7 +10,7 @@ import { InstalledSkillsTreeDataProvider, InstalledSkillTreeItem, LocationTreeIt
 import { SkillDetailPanel } from './views/skillDetailPanel';
 import { SkillInstallationService } from './services/installationService';
 import { SkillPathService } from './services/skillPathService';
-import { Skill, InstalledSkill, SkillRepository } from './types';
+import { Skill, InstalledSkill, SkillRepository, isSameRepository } from './types';
 
 /**
  * Parse a GitHub URL into its SkillRepository components.
@@ -384,15 +384,7 @@ export function activate(context: vscode.ExtensionContext) {
 
             const config = vscode.workspace.getConfiguration('agentSkills');
             const repositories = config.get<SkillRepository[]>('skillRepositories', []);
-            const updated = repositories.filter(
-                r => !(
-                    r.owner === repo.owner &&
-                    r.repo === repo.repo &&
-                    r.path === repo.path &&
-                    r.branch === repo.branch &&
-                    r.singleSkill === repo.singleSkill
-                )
-            );
+            const updated = repositories.filter(r => !isSameRepository(r, repo));
             // Suppress the config-change full refresh — we handle it incrementally below.
             marketplaceProvider.suppressConfigRefresh();
             await config.update('skillRepositories', updated, vscode.ConfigurationTarget.Global);
@@ -444,13 +436,7 @@ export function activate(context: vscode.ExtensionContext) {
             const config = vscode.workspace.getConfiguration('agentSkills');
             const repositories = config.get<SkillRepository[]>('skillRepositories', []);
 
-            const isDuplicate = repositories.some(
-                r =>
-                    r.owner === newRepo.owner &&
-                    r.repo === newRepo.repo &&
-                    r.path === newRepo.path &&
-                    (r.branch ?? branch) === branch
-            );
+            const isDuplicate = repositories.some(r => isSameRepository(r, newRepo));
             if (isDuplicate) {
                 vscode.window.showWarningMessage(
                     `${newRepo.owner}/${newRepo.repo} (${newRepo.path}) is already in the marketplace.`

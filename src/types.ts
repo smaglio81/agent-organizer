@@ -91,3 +91,15 @@ export interface CacheEntry<T> {
     timestamp: number;
     etag?: string;
 }
+
+/**
+ * Compare two SkillRepository configs for identity equality.
+ * All fields (owner, repo, path, branch, singleSkill) must match.
+ */
+export function isSameRepository(left: SkillRepository, right: SkillRepository): boolean {
+    return left.owner === right.owner &&
+        left.repo === right.repo &&
+        left.path === right.path &&
+        left.branch === right.branch &&
+        left.singleSkill === right.singleSkill;
+}
