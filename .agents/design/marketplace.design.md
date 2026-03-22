@@ -71,6 +71,8 @@ Skill repositories are configured via `agentSkills.skillRepositories`. Each entr
 
 Default repositories include skills from `anthropics`, `github/awesome-copilot`, `pytorch`, `openai`, and `microsoftdocs`.
 
+Repository entries are normalized via `normalizeRepository()` when read from config: `branch` defaults to `'main'` if omitted and `path` is trimmed. This ensures consistent behavior whether repositories are added via the Add Repository command or manually edited in `settings.json`.
+
 ---
 
 ## GitHub API Strategy
@@ -132,9 +134,10 @@ All actions appear in the `agentSkills.marketplace` view title bar.
 1. Prompt user for a GitHub URL.
 2. Parse URL into `{ owner, repo, branch?, path? }`.
 3. If branch is missing, fetch repository default branch from GitHub API.
-4. If path is missing, prompt user for path (default: `skills`).
-5. Build and append a `SkillRepository` entry to `agentSkills.skillRepositories` (global config).
-6. Incrementally fetch only that repository and append its node/skills into the Marketplace tree.
+4. If path is missing, prompt user for path (default: `skills`). Input is validated as non-empty and normalized (trimmed, leading/trailing slashes stripped).
+5. If path was extracted from the URL, it is also normalized (trimmed, leading/trailing slashes stripped).
+6. Build and append a `SkillRepository` entry to `agentSkills.skillRepositories` (global config).
+7. Incrementally fetch only that repository and append its node/skills into the Marketplace tree.
 
 If the repository load fails, a `FailedSourceTreeItem` is inserted instead of dropping the entry.
 

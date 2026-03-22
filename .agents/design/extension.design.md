@@ -73,6 +73,8 @@ Scans all known skill locations (workspace-relative and home-directory paths) fo
 |---|---|
 | `isSameRepository(a, b)` | Compares two `SkillRepository` entries by owner, repo, path, branch, and singleSkill. Used by both the Marketplace provider and extension commands (add/remove repository). |
 | `normalizeSeparators(p)` | Replaces backslashes with forward slashes. Used throughout the codebase (installed provider, installation service) to ensure consistent path separators on all platforms. |
+| `normalizeRepository(r)` | Defaults `branch` to `'main'` and trims `path`. Applied at every `agentSkills.skillRepositories` config read site so downstream code always sees well-formed entries, even when users manually edit settings.json and omit optional fields. |
+| `buildGitHubUrl(owner, repo, branch, path)` | Builds a GitHub URL with `'main'` fallback for missing branch and URL-encodes all segments. Used by Open in Browser, Skill Detail panel, and source frontmatter injection. |
 
 ---
 

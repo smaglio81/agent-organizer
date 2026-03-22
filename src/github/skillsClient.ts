@@ -9,7 +9,7 @@
  */
 
 import * as vscode from 'vscode';
-import { Skill, SkillRepository, SkillMetadata, CacheEntry, FailedRepository } from '../types';
+import { Skill, SkillRepository, SkillMetadata, CacheEntry, FailedRepository, normalizeRepository } from '../types';
 
 /**
  * GitHub Git Tree item from Trees API
@@ -48,7 +48,7 @@ export class GitHubSkillsClient {
      */
     async fetchAllSkills(): Promise<{ skills: Skill[]; failures: FailedRepository[] }> {
         const config = vscode.workspace.getConfiguration('agentSkills');
-        const repositories = config.get<SkillRepository[]>('skillRepositories', []);
+        const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
         
         const allSkills: Skill[] = [];
         const failures: FailedRepository[] = [];

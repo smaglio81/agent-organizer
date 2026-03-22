@@ -10,7 +10,7 @@ import { InstalledSkillsTreeDataProvider, InstalledSkillTreeItem, LocationTreeIt
 import { SkillDetailPanel } from './views/skillDetailPanel';
 import { SkillInstallationService } from './services/installationService';
 import { SkillPathService } from './services/skillPathService';
-import { Skill, InstalledSkill, SkillRepository, isSameRepository, normalizeSeparators, buildGitHubUrl } from './types';
+import { Skill, InstalledSkill, SkillRepository, isSameRepository, normalizeSeparators, buildGitHubUrl, normalizeRepository } from './types';
 
 /**
  * Parse a GitHub URL into its SkillRepository components.
@@ -386,7 +386,7 @@ export function activate(context: vscode.ExtensionContext) {
             const repo = item instanceof SourceTreeItem ? item.repo : item.failure.repo;
 
             const config = vscode.workspace.getConfiguration('agentSkills');
-            const repositories = config.get<SkillRepository[]>('skillRepositories', []);
+            const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
             const updated = repositories.filter(r => !isSameRepository(r, repo));
             // Suppress the config-change full refresh — we handle it incrementally below.
             marketplaceProvider.suppressConfigRefresh();
@@ -460,7 +460,7 @@ export function activate(context: vscode.ExtensionContext) {
             };
 
             const config = vscode.workspace.getConfiguration('agentSkills');
-            const repositories = config.get<SkillRepository[]>('skillRepositories', []);
+            const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
 
             const isDuplicate = repositories.some(r => isSameRepository(r, newRepo));
             if (isDuplicate) {

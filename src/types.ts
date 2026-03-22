@@ -116,8 +116,20 @@ export function normalizeSeparators(location: string): string {
  * Build a GitHub URL for a skill or repository path.
  * Falls back to 'main' when branch is missing and URL-encodes all segments.
  */
-export function buildGitHubUrl(owner: string, repo: string, branch: string | undefined, skillPath: string): string {
-    const safeBranch = encodeURIComponent(branch || 'main');
+export function buildGitHubUrl(owner: string, repo: string, branch: string, skillPath: string): string {
+    const safeBranch = encodeURIComponent(branch);
     const safePath = skillPath.split('/').map(encodeURIComponent).join('/');
     return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree/${safeBranch}/${safePath}`;
+}
+
+/**
+ * Normalize a SkillRepository read from user config.
+ * Ensures branch defaults to 'main' when omitted and trims path.
+ */
+export function normalizeRepository(repo: SkillRepository): SkillRepository {
+    return {
+        ...repo,
+        branch: repo.branch || 'main',
+        path: (repo.path || '').trim()
+    };
 }

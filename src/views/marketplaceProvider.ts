@@ -3,7 +3,7 @@
  */
 
 import * as vscode from 'vscode';
-import { Skill, FailedRepository, SkillRepository, isSameRepository } from '../types';
+import { Skill, FailedRepository, SkillRepository, isSameRepository, normalizeRepository } from '../types';
 import { GitHubSkillsClient } from '../github/skillsClient';
 
 let skillIconUri: vscode.Uri | undefined;
@@ -222,7 +222,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
 
     private async loadRepositoriesProgressively(clearCache: boolean): Promise<void> {
         const config = vscode.workspace.getConfiguration('agentSkills');
-        const repositories = config.get<SkillRepository[]>('skillRepositories', []);
+        const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
 
         const generation = ++this.loadGeneration;
 
