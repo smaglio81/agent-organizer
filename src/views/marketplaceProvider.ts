@@ -217,6 +217,9 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
 
         this.skills = [];
         this.failures = [];
+        // Clear stale tree-item caches so getParent/reveal don't reference old items
+        this.cachedSourceItems = [];
+        this.cachedSkillItems.clear();
         this.loadingRepos = [...repositories];
         this.isLoading = repositories.length > 0;
         this._onDidChangeTreeData.fire();
@@ -386,7 +389,10 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
     getChildren(element?: SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem): vscode.ProviderResult<(SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem)[]> {
 
         if (!element) {
-            // Root level
+            // Root level — clear stale tree-item caches before rebuilding
+            this.cachedSourceItems = [];
+            this.cachedSkillItems.clear();
+
             const filteredSkills = this.getFilteredSkills();
             
             if (filteredSkills.length === 0 && this.skills.length === 0 && this.failures.length === 0 && this.loadingRepos.length === 0) {

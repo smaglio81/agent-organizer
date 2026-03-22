@@ -23,7 +23,7 @@ import { Skill, InstalledSkill, SkillRepository } from './types';
  * `path` is undefined when it was not encoded in the URL (caller should prompt).
  * `branch` is undefined when it was not encoded in the URL (caller should resolve via API).
  */
-function parseGitHubUrl(input: string): { owner: string; repo: string; branch: string | undefined; path: string | undefined } | undefined {
+export function parseGitHubUrl(input: string): { owner: string; repo: string; branch: string | undefined; path: string | undefined } | undefined {
     // Strip protocol, www prefix, query string, and fragment
     const normalized = input.trim()
         .replace(/^https?:\/\//, '')

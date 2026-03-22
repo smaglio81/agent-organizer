@@ -11,15 +11,11 @@ import { SkillInstallationService } from '../services/installationService';
 import { SkillPathService } from '../services/skillPathService';
 import { Skill, SkillRepository, InstalledSkill } from '../types';
 import { GitHubSkillsClient } from '../github/skillsClient';
+import { parseGitHubUrl } from '../extension';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
-
-	test('Sample test', () => {
-		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
-	});
 
 	suite('SkillPathService.resolveInstallTarget path traversal validation', () => {
 		class TestSkillPathService extends SkillPathService {
@@ -424,6 +420,90 @@ suite('Extension Test Suite', () => {
 
 			assert.strictEqual(provider.getSkills().length, 1, 'Should have one skill after remove');
 			assert.strictEqual(provider.getSkills()[0].name, 'other-skill', 'Remaining skill should be from other repo');
+		});
+	});
+
+	suite('parseGitHubUrl', () => {
+		// --- Valid URLs ---
+
+		test('parses bare owner/repo URL', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('parses owner/repo with trailing slash', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo/');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('strips .git suffix from repo name', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo.git');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('parses /tree/branch URL', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo/tree/main');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: 'main', path: undefined });
+		});
+
+		test('parses /tree/branch/path URL', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo/tree/main/skills');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: 'main', path: 'skills' });
+		});
+
+		test('parses /tree/branch with deep path', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo/tree/develop/path/to/skills');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: 'develop', path: 'path/to/skills' });
+		});
+
+		test('strips query string and fragment', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo?tab=readme#section');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('handles http:// protocol', () => {
+			const result = parseGitHubUrl('http://github.com/owner/repo');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('handles www. prefix', () => {
+			const result = parseGitHubUrl('https://www.github.com/owner/repo');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('trims whitespace', () => {
+			const result = parseGitHubUrl('  https://github.com/owner/repo  ');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		// --- Invalid URLs ---
+
+		test('rejects non-GitHub host', () => {
+			assert.strictEqual(parseGitHubUrl('https://gitlab.com/owner/repo'), undefined);
+		});
+
+		test('rejects URL with only owner (no repo)', () => {
+			assert.strictEqual(parseGitHubUrl('https://github.com/owner'), undefined);
+		});
+
+		test('rejects /blob/ URLs', () => {
+			assert.strictEqual(parseGitHubUrl('https://github.com/owner/repo/blob/main/README.md'), undefined);
+		});
+
+		test('rejects /issues/ URLs', () => {
+			assert.strictEqual(parseGitHubUrl('https://github.com/owner/repo/issues/123'), undefined);
+		});
+
+		test('rejects /tree/ without branch segment', () => {
+			assert.strictEqual(parseGitHubUrl('https://github.com/owner/repo/tree'), undefined);
+		});
+
+		test('rejects empty string', () => {
+			assert.strictEqual(parseGitHubUrl(''), undefined);
+		});
+
+		test('rejects random non-URL string', () => {
+			assert.strictEqual(parseGitHubUrl('not a url at all'), undefined);
 		});
 	});
 });

@@ -652,19 +652,14 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     /**
      * Dispose existing file watchers and create new ones for current scan locations.
      * Called on refresh to pick up new or removed location directories.
+     * Watchers are tracked internally via activeWatchers and not re-pushed
+     * into context.subscriptions to avoid unbounded growth.
      */
     private recreateFileWatchers(): void {
-        // Dispose old watchers
         for (const watcher of this.activeWatchers) {
             watcher.dispose();
         }
-        // Create fresh watchers and register them for disposal
-        const newWatchers = this.createFileWatchers();
-        if (this.context && this.context.subscriptions) {
-            for (const watcher of newWatchers) {
-                this.context.subscriptions.push(watcher);
-            }
-        }
+        this.createFileWatchers();
     }
 
     /**
