@@ -24,9 +24,11 @@ import { Skill, InstalledSkill, SkillRepository } from './types';
  * `branch` is undefined when it was not encoded in the URL (caller should resolve via API).
  */
 function parseGitHubUrl(input: string): { owner: string; repo: string; branch: string | undefined; path: string | undefined } | undefined {
+    // Strip protocol, www prefix, query string, and fragment
     const normalized = input.trim()
         .replace(/^https?:\/\//, '')
-        .replace(/^www\./, '');
+        .replace(/^www\./, '')
+        .replace(/[?#].*$/, '');
 
     if (!normalized.startsWith('github.com/')) {
         return undefined;
@@ -38,16 +40,24 @@ function parseGitHubUrl(input: string): { owner: string; repo: string; branch: s
     }
 
     const owner = parts[0];
-    const repo = parts[1];
+    // Strip trailing .git suffix from repo name
+    const repo = parts[1].replace(/\.git$/, '');
     let branch: string | undefined;
     let path: string | undefined;
 
-    // /tree/<branch>[/<path...>]
-    if (parts.length >= 4 && parts[2] === 'tree') {
-        branch = parts[3];
-        if (parts.length > 4) {
-            path = parts.slice(4).join('/');
-        }
+    if (parts.length === 2) {
+        // Exactly owner/repo — valid bare form
+        return { owner, repo, branch, path };
+    }
+
+    // Only accept /tree/<branch>[/<path...>] beyond owner/repo
+    if (parts[2] !== 'tree' || parts.length < 4) {
+        return undefined;
+    }
+
+    branch = parts[3];
+    if (parts.length > 4) {
+        path = parts.slice(4).join('/');
     }
 
     return { owner, repo, branch, path };
@@ -379,7 +389,13 @@ export function activate(context: vscode.ExtensionContext) {
             const config = vscode.workspace.getConfiguration('agentSkills');
             const repositories = config.get<SkillRepository[]>('skillRepositories', []);
             const updated = repositories.filter(
-                r => !(r.owner === repo.owner && r.repo === repo.repo && r.path === repo.path)
+                r => !(
+                    r.owner === repo.owner &&
+                    r.repo === repo.repo &&
+                    r.path === repo.path &&
+                    r.branch === repo.branch &&
+                    r.singleSkill === repo.singleSkill
+                )
             );
             // Suppress the config-change full refresh — we handle it incrementally below.
             marketplaceProvider.suppressConfigRefresh();
@@ -433,7 +449,11 @@ export function activate(context: vscode.ExtensionContext) {
             const repositories = config.get<SkillRepository[]>('skillRepositories', []);
 
             const isDuplicate = repositories.some(
-                r => r.owner === newRepo.owner && r.repo === newRepo.repo && r.path === newRepo.path
+                r =>
+                    r.owner === newRepo.owner &&
+                    r.repo === newRepo.repo &&
+                    r.path === newRepo.path &&
+                    (r.branch ?? branch) === branch
             );
             if (isDuplicate) {
                 vscode.window.showWarningMessage(

@@ -3,6 +3,7 @@
  */
 
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { InstalledSkill, SkillMetadata } from '../types';
 import { SkillPathService } from '../services/skillPathService';
 
@@ -596,7 +597,7 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
      */
     findSkillNameByFileUri(fileUri: vscode.Uri): string | undefined {
         const filePath = fileUri.fsPath.toLowerCase();
-        const sep = require('path').sep as string;
+        const sep = path.sep;
         for (const skill of this.installedSkills) {
             const uri = this.resolveSkillUri(skill);
             if (!uri) { continue; }
@@ -654,8 +655,13 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         for (const watcher of this.activeWatchers) {
             watcher.dispose();
         }
-        // Create fresh watchers
-        this.createFileWatchers();
+        // Create fresh watchers and register them for disposal
+        const newWatchers = this.createFileWatchers();
+        if (this.context && this.context.subscriptions) {
+            for (const watcher of newWatchers) {
+                this.context.subscriptions.push(watcher);
+            }
+        }
     }
 
     /**

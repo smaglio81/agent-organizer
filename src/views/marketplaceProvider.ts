@@ -168,11 +168,19 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
      * Incrementally remove a single repository — no network requests needed.
      */
     removeRepoFromMarketplace(repo: SkillRepository): void {
+        // Remove only skills that belong to the exact same repository configuration
         this.skills = this.skills.filter(
-            s => !(s.source.owner === repo.owner && s.source.repo === repo.repo && s.source.path === repo.path)
+            s => !(
+                s.source.owner === repo.owner &&
+                s.source.repo === repo.repo &&
+                s.source.path === repo.path &&
+                s.source.branch === repo.branch &&
+                s.source.singleSkill === repo.singleSkill
+            )
         );
+        // Remove only failures for the exact same repository configuration
         this.failures = this.failures.filter(
-            f => !(f.repo.owner === repo.owner && f.repo.repo === repo.repo && f.repo.path === repo.path)
+            f => !this.isSameRepository(f.repo, repo)
         );
         this.loadingRepos = this.loadingRepos.filter(r => !this.isSameRepository(r, repo));
         this._onDidChangeTreeData.fire();
@@ -459,11 +467,8 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
         
         return Array.from(groups.entries())
             .sort(([left], [right]) => left.localeCompare(right))
-            .map(([key, { skills: skillList, repo }]) => {
-                // Use a friendlier label: owner/repo when path is the only
-                // config, otherwise append the distinguishing path
-                const base = `${repo.owner}/${repo.repo}`;
-                const label = this.hasMultiplePathsForRepo(repo, groups) ? `${base} (${repo.path})` : base;
+            .map(([_key, { skills: skillList, repo }]) => {
+                const label = this.buildSourceLabel(repo, groups);
                 return new SourceTreeItem(label, skillList, repo);
             });
     }
@@ -477,22 +482,41 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
     }
 
     /**
-     * Check whether the same owner/repo appears more than once in the
-     * current groups (i.e. configured with different paths/branches).
+     * Build a disambiguated label for a source group.
+     * Uses just owner/repo when unique; appends path and/or branch
+     * only when needed to distinguish from other configs of the same repo.
      */
-    private hasMultiplePathsForRepo(
+    private buildSourceLabel(
         repo: SkillRepository,
         groups: Map<string, { skills: Skill[]; repo: SkillRepository }>
-    ): boolean {
+    ): string {
         const base = `${repo.owner}/${repo.repo}`;
-        let count = 0;
+
+        // Collect all configs sharing the same owner/repo
+        const siblings: SkillRepository[] = [];
         for (const [, { repo: r }] of groups) {
             if (`${r.owner}/${r.repo}` === base) {
-                count++;
-                if (count > 1) { return true; }
+                siblings.push(r);
             }
         }
-        return false;
+
+        // Only one config for this repo — plain label
+        if (siblings.length <= 1) {
+            return base;
+        }
+
+        // Check if path alone disambiguates
+        const pathCounts = new Map<string, number>();
+        for (const s of siblings) {
+            pathCounts.set(s.path, (pathCounts.get(s.path) || 0) + 1);
+        }
+
+        if ((pathCounts.get(repo.path) || 0) <= 1) {
+            return `${base} (${repo.path})`;
+        }
+
+        // Path collides — include branch to disambiguate
+        return `${base} (${repo.path} @ ${repo.branch})`;
     }
 
     private createEmptyItem(): SkillTreeItem {
