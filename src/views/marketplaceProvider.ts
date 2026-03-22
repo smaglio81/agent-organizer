@@ -12,6 +12,9 @@ let skillIconUri: vscode.Uri;
  * Initialize skill icon from extension resources
  */
 export function initializeMarketplaceIcons(context: vscode.ExtensionContext): void {
+    if (!context.extensionUri) {
+        return;
+    }
     skillIconUri = vscode.Uri.joinPath(context.extensionUri, 'resources', 'skills-icon-purple.svg');
 }
 
