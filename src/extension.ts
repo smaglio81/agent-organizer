@@ -13,11 +13,15 @@ import { SkillPathService } from './services/skillPathService';
 import { Skill, InstalledSkill, SkillRepository, isSameRepository, normalizeSeparators, buildGitHubUrl, normalizeRepository } from './types';
 
 /**
- * Validate a file or folder name: non-empty, no path separators.
+ * Validate a file or folder name: non-empty, no path separators, no traversal.
  */
 function validateItemName(value: string | undefined, label: string): string | undefined {
     if (!value?.trim()) { return `${label} is required`; }
     if (/[/\\]/.test(value)) { return `${label} cannot contain path separators`; }
+    // Block . and .. to prevent path traversal via Uri.joinPath
+    if (value.trim() === '.' || value.trim() === '..') { return `${label} cannot be '.' or '..'`; }
+    // Block names containing .. segments (e.g. "..foo", "a..b") that could normalize to traversal
+    if (/\.\./.test(value.trim())) { return `${label} cannot contain '..'`; }
     return undefined;
 }
 

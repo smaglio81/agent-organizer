@@ -187,15 +187,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
      */
     removeRepoFromMarketplace(repo: SkillRepository): void {
         // Remove only skills that belong to the exact same repository configuration
-        this.skills = this.skills.filter(
-            s => !(
-                s.source.owner === repo.owner &&
-                s.source.repo === repo.repo &&
-                s.source.path === repo.path &&
-                s.source.branch === repo.branch &&
-                s.source.singleSkill === repo.singleSkill
-            )
-        );
+        this.skills = this.skills.filter(s => !isSameRepository(s.source, repo));
         // Remove only failures for the exact same repository configuration
         this.failures = this.failures.filter(
             f => !isSameRepository(f.repo, repo)
@@ -365,14 +357,15 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
             this.clearSearch();
         }
 
-        // Fire a tree refresh to rebuild cached source items
-        this._onDidChangeTreeData.fire();
-        await new Promise(resolve => setTimeout(resolve, 150));
+        // Rebuild root-level items synchronously to populate cachedSourceItems
+        await Promise.resolve(this.getChildren());
 
-        // Find the parent source group and expand it (this triggers getChildren
-        // which caches the child SkillTreeItems)
+        // Locate the parent source group for the target skill
         const sourceItem = this.cachedSourceItems.find(s => isSameRepository(s.repo, skill.source));
         if (sourceItem) {
+            // Force child creation to populate cachedSkillItems without relying on UI timing
+            await Promise.resolve(this.getChildren(sourceItem));
+
             try {
                 await this.treeView.reveal(sourceItem, { select: false, focus: false, expand: true });
             } catch {
@@ -380,10 +373,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
             }
         }
 
-        // Brief delay for the tree to process the expansion and call getChildren
-        await new Promise(resolve => setTimeout(resolve, 150));
-
-        // Now reveal the skill item (should be cached after source expansion)
+        // Reveal the cached skill item
         const cached = this.cachedSkillItems.get(this.skillCacheKey(skill));
         if (cached) {
             try {

@@ -117,13 +117,7 @@ Add custom repositories by modifying this setting:
 
 **Setting**: `agentSkills.installLocation`
 
-Choose where to install skills in your workspace or home directory:
-- `.github/skills` (default)
-- `.claude/skills`
-- `~/.copilot/skills`
-- `~/.claude/skills`
-
-GitHub Copilot CLI can also use skills installed under the user's home directory ([link](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills#about-agent-skills)).
+Choose where to install skills in your workspace or home directory. Uses location list from `chat.agentSkillsLocations`.
 
 ### GitHub Token
 
@@ -168,6 +162,7 @@ name: My Awesome Skill
 description: A brief description of what this skill does
 license: MIT
 compatibility: Claude 3.5 Sonnet, Claude 3 Opus
+agent-skills-source: <github url of skill, added when skill is installed through the marketplace>
 ---
 
 ## Usage
