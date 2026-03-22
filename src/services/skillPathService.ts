@@ -7,10 +7,27 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 export class SkillPathService {
+    private readonly DEFAULT_SCAN_LOCATIONS = [
+        '.agents/skills',
+        '.github/skills',
+        '.claude/skills',
+        '~/.agents/skills',
+        '~/.copilot/skills',
+        '~/.claude/skills'
+    ];
+
     constructor() {}
 
     getScanLocations(): string[] {
-        return ['.agents/skills', '.github/skills', '.claude/skills', '~/.agents/skills', '~/.copilot/skills', '~/.claude/skills'];
+        const config = vscode.workspace.getConfiguration('chat');
+        const locations = config.get<string[]>('agentSkillsLocations');
+        
+        // Use configured locations if available, otherwise fall back to defaults
+        if (locations && Array.isArray(locations) && locations.length > 0) {
+            return locations;
+        }
+        
+        return this.DEFAULT_SCAN_LOCATIONS;
     }
 
     getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {

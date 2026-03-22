@@ -89,10 +89,15 @@ export class SkillInstallationService {
                     const parentDir = vscode.Uri.joinPath(filePath, '..');
                     await vscode.workspace.fs.createDirectory(parentDir);
                     
-                    // Write file
+                    // Write file, injecting source URL into SKILL.md frontmatter
+                    let content = file.content;
+                    if (file.path === 'SKILL.md') {
+                        content = this.injectSourceFrontmatter(content, skill);
+                    }
+
                     await vscode.workspace.fs.writeFile(
                         filePath,
-                        new TextEncoder().encode(file.content)
+                        new TextEncoder().encode(content)
                     );
                     
                     written++;
@@ -130,16 +135,6 @@ export class SkillInstallationService {
             return false;
         }
 
-        const confirm = await vscode.window.showWarningMessage(
-            `Uninstall skill "${skill.name}"? This will delete the skill folder.`,
-            { modal: true },
-            'Uninstall'
-        );
-
-        if (confirm !== 'Uninstall') {
-            return false;
-        }
-
         try {
             const skillDir = this.pathService.resolveLocationToUri(skill.location, workspaceFolder);
 
@@ -156,6 +151,300 @@ export class SkillInstallationService {
             vscode.window.showErrorMessage(`Failed to uninstall skill: ${message}`);
             return false;
         }
+    }
+
+    /**
+     * Move a skill from its current location to a different scan location
+     */
+    async moveSkill(skill: InstalledSkill): Promise<boolean> {
+        const locations = this.pathService.getScanLocations();
+        // skill.location includes the skill name (e.g. "~/.copilot/skills/my-skill"),
+        // strip the trailing segment to get the parent scan location for display
+        const currentParentLocation = skill.location.replace(/\/[^/]+$/, '');
+
+        // Build quick pick items, marking the current location
+        const items: vscode.QuickPickItem[] = locations.map(loc => ({
+            label: loc,
+            description: loc === currentParentLocation ? '(current)' : undefined
+        }));
+
+        const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: `Move "${skill.name}" to...`
+        });
+
+        if (!selected || selected.label === currentParentLocation) {
+            return false;
+        }
+
+        const targetLocation = selected.label;
+        const targetWorkspaceFolder = this.pathService.getWorkspaceFolderForLocation(targetLocation);
+
+        if (this.pathService.requiresWorkspaceFolder(targetLocation) && !targetWorkspaceFolder) {
+            vscode.window.showErrorMessage('No workspace folder open. Cannot move to a workspace-relative location.');
+            return false;
+        }
+
+        const targetBaseUri = this.pathService.resolveLocationToUri(targetLocation, targetWorkspaceFolder);
+        if (!targetBaseUri) {
+            vscode.window.showErrorMessage('Failed to resolve target location.');
+            return false;
+        }
+
+        const targetDir = vscode.Uri.joinPath(targetBaseUri, skill.name);
+
+        // Check if skill already exists at target
+        try {
+            await vscode.workspace.fs.stat(targetDir);
+            const overwrite = await vscode.window.showWarningMessage(
+                `"${skill.name}" already exists at ${targetLocation}. Overwrite?`,
+                { modal: true },
+                'Overwrite'
+            );
+            if (overwrite !== 'Overwrite') {
+                return false;
+            }
+            await vscode.workspace.fs.delete(targetDir, { recursive: true });
+        } catch {
+            // Doesn't exist at target, continue
+        }
+
+        // Resolve source directory using the full skill.location (includes skill name)
+        const sourceWorkspaceFolder = this.pathService.getWorkspaceFolderForLocation(skill.location);
+        const sourceDir = this.pathService.resolveLocationToUri(skill.location, sourceWorkspaceFolder);
+        if (!sourceDir) {
+            vscode.window.showErrorMessage('Failed to resolve source skill location.');
+            return false;
+        }
+
+        try {
+            // Ensure target parent directory exists
+            await vscode.workspace.fs.createDirectory(targetBaseUri);
+
+            // Copy source to target, then delete source (move)
+            await vscode.workspace.fs.copy(sourceDir, targetDir, { overwrite: true });
+            await vscode.workspace.fs.delete(sourceDir, { recursive: true, useTrash: true });
+
+            vscode.window.showInformationMessage(`Moved "${skill.name}" to ${targetLocation}`);
+            return true;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to move skill: ${message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Copy a skill to a different scan location, keeping the original in place
+     */
+    async copySkill(skill: InstalledSkill): Promise<boolean> {
+        const locations = this.pathService.getScanLocations();
+        // Strip trailing skill name to get the parent scan location for display
+        const currentParentLocation = skill.location.replace(/\/[^/]+$/, '');
+
+        // Build quick pick items, marking the current location
+        const items: vscode.QuickPickItem[] = locations.map(loc => ({
+            label: loc,
+            description: loc === currentParentLocation ? '(current)' : undefined
+        }));
+
+        const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: `Copy "${skill.name}" to...`
+        });
+
+        if (!selected || selected.label === currentParentLocation) {
+            return false;
+        }
+
+        const targetLocation = selected.label;
+        const targetWorkspaceFolder = this.pathService.getWorkspaceFolderForLocation(targetLocation);
+
+        if (this.pathService.requiresWorkspaceFolder(targetLocation) && !targetWorkspaceFolder) {
+            vscode.window.showErrorMessage('No workspace folder open. Cannot copy to a workspace-relative location.');
+            return false;
+        }
+
+        const targetBaseUri = this.pathService.resolveLocationToUri(targetLocation, targetWorkspaceFolder);
+        if (!targetBaseUri) {
+            vscode.window.showErrorMessage('Failed to resolve target location.');
+            return false;
+        }
+
+        const targetDir = vscode.Uri.joinPath(targetBaseUri, skill.name);
+
+        // Check if skill already exists at target
+        try {
+            await vscode.workspace.fs.stat(targetDir);
+            const overwrite = await vscode.window.showWarningMessage(
+                `"${skill.name}" already exists at ${targetLocation}. Overwrite?`,
+                { modal: true },
+                'Overwrite'
+            );
+            if (overwrite !== 'Overwrite') {
+                return false;
+            }
+            await vscode.workspace.fs.delete(targetDir, { recursive: true });
+        } catch {
+            // Doesn't exist at target, continue
+        }
+
+        // Resolve source directory using the full skill.location (includes skill name)
+        const sourceWorkspaceFolder = this.pathService.getWorkspaceFolderForLocation(skill.location);
+        const sourceDir = this.pathService.resolveLocationToUri(skill.location, sourceWorkspaceFolder);
+        if (!sourceDir) {
+            vscode.window.showErrorMessage('Failed to resolve source skill location.');
+            return false;
+        }
+
+        try {
+            // Ensure target parent directory exists
+            await vscode.workspace.fs.createDirectory(targetBaseUri);
+
+            // Copy source to target (no delete — keep original)
+            await vscode.workspace.fs.copy(sourceDir, targetDir, { overwrite: true });
+
+            vscode.window.showInformationMessage(`Copied "${skill.name}" to ${targetLocation}`);
+            return true;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to copy skill: ${message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Synchronize the newest skill copy to all other locations that have an older copy.
+     * Called on the skill with status "newest".
+     */
+    async syncSkill(skill: InstalledSkill, allInstalled: InstalledSkill[]): Promise<boolean> {
+        // Find all other copies with the same name
+        const duplicates = allInstalled.filter(
+            s => s.name === skill.name && s.location !== skill.location
+        );
+
+        if (duplicates.length === 0) {
+            vscode.window.showInformationMessage(`No other copies of "${skill.name}" to synchronize.`);
+            return false;
+        }
+
+        // Resolve source
+        const sourceWorkspaceFolder = this.pathService.getWorkspaceFolderForLocation(skill.location);
+        const sourceDir = this.pathService.resolveLocationToUri(skill.location, sourceWorkspaceFolder);
+        if (!sourceDir) {
+            vscode.window.showErrorMessage('Failed to resolve source skill location.');
+            return false;
+        }
+
+        let synced = 0;
+        for (const target of duplicates) {
+            const targetWorkspaceFolder = this.pathService.getWorkspaceFolderForLocation(target.location);
+            const targetDir = this.pathService.resolveLocationToUri(target.location, targetWorkspaceFolder);
+            if (!targetDir) {
+                continue;
+            }
+
+            try {
+                await vscode.workspace.fs.delete(targetDir, { recursive: true });
+                await vscode.workspace.fs.copy(sourceDir, targetDir, { overwrite: true });
+                synced++;
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                vscode.window.showErrorMessage(`Failed to sync to ${target.location}: ${message}`);
+            }
+        }
+
+        if (synced > 0) {
+            vscode.window.showInformationMessage(
+                `Synchronized "${skill.name}" to ${synced} location${synced !== 1 ? 's' : ''}.`
+            );
+        }
+        return synced > 0;
+    }
+
+    /**
+     * Get the latest version of a skill by copying from the specified source skill.
+     */
+    async getLatestSkillFrom(targetSkill: InstalledSkill, sourceSkill: InstalledSkill): Promise<boolean> {
+        const sourceWorkspaceFolder = this.pathService.getWorkspaceFolderForLocation(sourceSkill.location);
+        const sourceDir = this.pathService.resolveLocationToUri(sourceSkill.location, sourceWorkspaceFolder);
+        if (!sourceDir) {
+            vscode.window.showErrorMessage('Failed to resolve source skill location.');
+            return false;
+        }
+
+        const targetWorkspaceFolder = this.pathService.getWorkspaceFolderForLocation(targetSkill.location);
+        const targetDir = this.pathService.resolveLocationToUri(targetSkill.location, targetWorkspaceFolder);
+        if (!targetDir) {
+            vscode.window.showErrorMessage('Failed to resolve target skill location.');
+            return false;
+        }
+
+        try {
+            await vscode.workspace.fs.delete(targetDir, { recursive: true });
+            await vscode.workspace.fs.copy(sourceDir, targetDir, { overwrite: true });
+            vscode.window.showInformationMessage(`Updated "${targetSkill.name}" from latest copy.`);
+            return true;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to get latest: ${message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Delete all skills under a location folder
+     */
+    async deleteAllSkillsInLocation(location: string, skills: InstalledSkill[]): Promise<boolean> {
+        let deleted = 0;
+        for (const skill of skills) {
+            const workspaceFolder = this.pathService.getWorkspaceFolderForLocation(skill.location);
+            const skillDir = this.pathService.resolveLocationToUri(skill.location, workspaceFolder);
+            if (!skillDir) {
+                continue;
+            }
+
+            try {
+                await vscode.workspace.fs.delete(skillDir, { recursive: true, useTrash: true });
+                deleted++;
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                vscode.window.showErrorMessage(`Failed to delete "${skill.name}": ${message}`);
+            }
+        }
+
+        if (deleted > 0) {
+            vscode.window.showInformationMessage(
+                `Deleted ${deleted} skill${deleted !== 1 ? 's' : ''} from ${location}.`
+            );
+        }
+        return deleted > 0;
+    }
+
+    /**
+     * Inject a `source:` line into SKILL.md frontmatter pointing to the GitHub URL.
+     * If frontmatter exists, appends the line before the closing `---`.
+     * If no frontmatter exists, wraps the content with new frontmatter.
+     */
+    private injectSourceFrontmatter(content: string, skill: Skill): string {
+        const sourceUrl = `https://github.com/${skill.source.owner}/${skill.source.repo}/tree/${skill.source.branch}/${skill.skillPath}`;
+        const frontmatterMatch = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/);
+
+        if (frontmatterMatch) {
+            const opening = frontmatterMatch[1];
+            let body = frontmatterMatch[2];
+            const closing = frontmatterMatch[3];
+            const rest = content.slice(frontmatterMatch[0].length);
+
+            // Remove any existing agent-skills-source line
+            body = body.replace(/^agent-skills-source:\s.*\n?/m, '').replace(/\n$/, '');
+
+            // Append as the last line of frontmatter
+            body += `\nagent-skills-source: ${sourceUrl}`;
+
+            return `${opening}${body}${closing}${rest}`;
+        }
+
+        // No frontmatter — wrap content with new frontmatter
+        return `---\nagent-skills-source: ${sourceUrl}\n---\n${content}`;
     }
 
     /**

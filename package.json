@@ -2,7 +2,7 @@
   "name": "agent-skills",
   "displayName": "Agent Skills",
   "description": "Agent Skills Marketplace and Toolkit",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "icon": "resources/logo.png",
   "publisher": "formulahendry",
   "engines": {
@@ -68,7 +68,7 @@
       },
       {
         "command": "agentSkills.uninstall",
-        "title": "Uninstall Skill",
+        "title": "Delete",
         "icon": "$(trash)"
       },
       {
@@ -87,6 +87,16 @@
         "icon": "$(info)"
       },
       {
+        "command": "agentSkills.removeRepository",
+        "title": "Delete",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "agentSkills.addRepository",
+        "title": "Add Repository",
+        "icon": "$(add)"
+      },
+      {
         "command": "agentSkills.search",
         "title": "Search Skills",
         "icon": "$(search)"
@@ -100,6 +110,40 @@
         "command": "agentSkills.openSkillFolder",
         "title": "Open Skill Folder",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "agentSkills.moveSkill",
+        "title": "Move to..."
+      },
+      {
+        "command": "agentSkills.copySkill",
+        "title": "Copy to..."
+      },
+      {
+        "command": "agentSkills.syncSkill",
+        "title": "Update older skill copies with latest"
+      },
+      {
+        "command": "agentSkills.getLatestSkill",
+        "title": "Get latest copy of skill"
+      },
+      {
+        "command": "agentSkills.deleteAllSkills",
+        "title": "Delete"
+      },
+      {
+        "command": "agentSkills.showInMarketplace",
+        "title": "Show in Marketplace"
+      },
+      {
+        "command": "agentSkills.searchInstalled",
+        "title": "Search Skills",
+        "icon": "$(search)"
+      },
+      {
+        "command": "agentSkills.clearSearchInstalled",
+        "title": "Clear Search",
+        "icon": "$(close)"
       },
       {
         "command": "agentSkills.focusMarketplace",
@@ -124,6 +168,11 @@
     "menus": {
       "view/title": [
         {
+          "command": "agentSkills.addRepository",
+          "when": "view == agentSkills.marketplace",
+          "group": "navigation@0"
+        },
+        {
           "command": "agentSkills.search",
           "when": "view == agentSkills.marketplace",
           "group": "navigation@1"
@@ -142,6 +191,16 @@
           "command": "agentSkills.refreshInstalled",
           "when": "view == agentSkills.installed",
           "group": "navigation@2"
+        },
+        {
+          "command": "agentSkills.searchInstalled",
+          "when": "view == agentSkills.installed",
+          "group": "navigation@1"
+        },
+        {
+          "command": "agentSkills.clearSearchInstalled",
+          "when": "view == agentSkills.installed && agentSkills:installedSearchActive",
+          "group": "navigation@1"
         },
         {
           "command": "agentSkills.selectInstallLocation",
@@ -166,19 +225,69 @@
           "group": "inline@1"
         },
         {
+          "command": "agentSkills.install",
+          "when": "view == agentSkills.marketplace && viewItem == skill",
+          "group": "1_install@1"
+        },
+        {
           "command": "agentSkills.viewDetails",
           "when": "view == agentSkills.marketplace && viewItem == skill",
           "group": "inline@2"
         },
         {
-          "command": "agentSkills.uninstall",
-          "when": "view == agentSkills.installed && viewItem == installedSkill",
+          "command": "agentSkills.removeRepository",
+          "when": "view == agentSkills.marketplace && (viewItem == source || viewItem == failedSource)",
           "group": "inline@1"
         },
         {
+          "command": "agentSkills.removeRepository",
+          "when": "view == agentSkills.marketplace && (viewItem == source || viewItem == failedSource)",
+          "group": "1_delete@1"
+        },
+        {
+          "command": "agentSkills.moveSkill",
+          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "group": "1_move@1"
+        },
+        {
+          "command": "agentSkills.copySkill",
+          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "group": "1_move@2"
+        },
+        {
+          "command": "agentSkills.syncSkill",
+          "when": "view == agentSkills.installed && viewItem == installedSkill_newest",
+          "group": "1_move@3"
+        },
+        {
+          "command": "agentSkills.getLatestSkill",
+          "when": "view == agentSkills.installed && viewItem == installedSkill_older",
+          "group": "1_move@4"
+        },
+        {
+          "command": "agentSkills.uninstall",
+          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "group": "inline@1"
+        },
+        {
+          "command": "agentSkills.uninstall",
+          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "group": "2_delete@1"
+        },
+        {
           "command": "agentSkills.openSkillFolder",
-          "when": "view == agentSkills.installed && viewItem == installedSkill",
+          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
           "group": "inline@2"
+        },
+        {
+          "command": "agentSkills.showInMarketplace",
+          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "group": "3_marketplace@1"
+        },
+        {
+          "command": "agentSkills.deleteAllSkills",
+          "when": "view == agentSkills.installed && viewItem == location",
+          "group": "1_delete@1"
         }
       ]
     },
@@ -262,16 +371,8 @@
         },
         "agentSkills.installLocation": {
           "type": "string",
-          "enum": [
-            ".agents/skills",
-            ".github/skills",
-            ".claude/skills",
-            "~/.agents/skills",
-            "~/.copilot/skills",
-            "~/.claude/skills"
-          ],
           "default": ".github/skills",
-          "description": "Where to install skills: in the current workspace or in the user's home directory (~/). GitHub Copilot CLI can use skills from both locations."
+          "description": "Where to install skills: in the current workspace or in the user's home directory (~/). Must be one of the locations defined in chat.agentSkillsLocations."
         },
         "agentSkills.githubToken": {
           "type": "string",

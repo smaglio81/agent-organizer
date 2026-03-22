@@ -40,6 +40,14 @@ export interface Skill {
 }
 
 /**
+ * A repository that failed to load, with the error message preserved for display
+ */
+export interface FailedRepository {
+    repo: SkillRepository;
+    error: string;
+}
+
+/**
  * Installed skill with local path information
  */
 export interface InstalledSkill {

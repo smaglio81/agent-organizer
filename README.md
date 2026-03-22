@@ -62,6 +62,29 @@ Click the **info icon** (ℹ️) next to any skill in the marketplace to open a 
    - **Uninstall**: Click the trash icon to remove the skill
    - **Open Folder**: Click the folder icon to view the skill files in VS Code
 
+### Duplicate Detection with Color-Coded Icons
+
+When the same skill is installed in multiple locations, icons indicate their relative status at a glance:
+
+![Color-coded icons](resources/installed-skills-color-coded-icons.png)
+
+- 🟣 Purple — unique skill, only one copy exists
+- 🟢 Green — newest copy among duplicates
+- 🟠 Orange — an older copy, a newer version exists elsewhere
+- 🔵 Blue — all copies are identical
+
+### Installed Skills Right-Click Menu
+
+Right-click any installed skill for quick actions:
+
+![Right-click menu](resources/installed-skills-right-click-menu.png)
+
+- **Move to...** / **Copy to...** — relocate or duplicate a skill across scan locations
+- **Update older skill copies with latest** — sync the newest version to all other locations (green skills only)
+- **Get latest copy of skill** — replace an older copy with the newest version (orange skills only)
+- **Delete** — remove the skill
+- **Show in Marketplace** — reveal and highlight the skill in the Marketplace view
+
 ## Configuration
 
 You can customize the extension behavior through VS Code settings. Press `Ctrl+,` (or `Cmd+,` on Mac) and search for "Agent Skills":
