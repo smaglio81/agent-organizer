@@ -10,7 +10,7 @@ import { InstalledSkillsTreeDataProvider, InstalledSkillTreeItem, LocationTreeIt
 import { SkillDetailPanel } from './views/skillDetailPanel';
 import { SkillInstallationService } from './services/installationService';
 import { SkillPathService } from './services/skillPathService';
-import { Skill, InstalledSkill, SkillRepository, isSameRepository, normalizeSeparators } from './types';
+import { Skill, InstalledSkill, SkillRepository, isSameRepository, normalizeSeparators, buildGitHubUrl } from './types';
 
 /**
  * Parse a GitHub URL into its SkillRepository components.
@@ -88,13 +88,15 @@ export function activate(context: vscode.ExtensionContext) {
     installedProvider.setTreeView(installedTreeView);
 
     // Handle expand/collapse events to persist state
-    installedTreeView.onDidCollapseElement(e => {
+    const collapseDisposable = installedTreeView.onDidCollapseElement(e => {
         installedProvider.onDidCollapseElement(e.element);
     });
 
-    installedTreeView.onDidExpandElement(e => {
+    const expandDisposable = installedTreeView.onDidExpandElement(e => {
         installedProvider.onDidExpandElement(e.element);
     });
+    
+    context.subscriptions.push(collapseDisposable, expandDisposable);
 
     // Helper to sync installed status with marketplace
     const syncInstalledStatus = async () => {
@@ -298,20 +300,21 @@ export function activate(context: vscode.ExtensionContext) {
             
             // Get enum values from skillPathService
             const enumValues = pathService.getScanLocations();
+            const normalizedCurrent = normalizeSeparators(currentValue);
             
-            // Build quick pick items
+            // Build quick pick items (normalize for comparison with current value)
             const items: vscode.QuickPickItem[] = [];
             
             // Add enum values
             for (const value of enumValues) {
                 items.push({
                     label: value,
-                    description: value === currentValue ? '(current)' : undefined
+                    description: normalizeSeparators(value) === normalizedCurrent ? '(current)' : undefined
                 });
             }
             
             // Add current value if not in enum
-            if (!enumValues.includes(currentValue)) {
+            if (!enumValues.some(v => normalizeSeparators(v) === normalizedCurrent)) {
                 items.unshift({
                     label: currentValue,
                     description: '(current)'
@@ -387,15 +390,21 @@ export function activate(context: vscode.ExtensionContext) {
             const updated = repositories.filter(r => !isSameRepository(r, repo));
             // Suppress the config-change full refresh — we handle it incrementally below.
             marketplaceProvider.suppressConfigRefresh();
-            await config.update('skillRepositories', updated, vscode.ConfigurationTarget.Global);
-            marketplaceProvider.removeRepoFromMarketplace(repo);
-            marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
+            try {
+                await config.update('skillRepositories', updated, vscode.ConfigurationTarget.Global);
+                marketplaceProvider.removeRepoFromMarketplace(repo);
+                marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
+            } catch (e) {
+                // Reset suppression so external config changes aren't silently ignored
+                marketplaceProvider.shouldHandleConfigChange();
+                throw e;
+            }
         }),
 
         // Open a skill repository in the default browser
         vscode.commands.registerCommand('agentSkills.openInBrowser', (item: SourceTreeItem | FailedSourceTreeItem) => {
             const repo = item instanceof SourceTreeItem ? item.repo : item.failure.repo;
-            const url = `https://github.com/${repo.owner}/${repo.repo}/tree/${repo.branch}/${repo.path}`;
+            const url = buildGitHubUrl(repo.owner, repo.repo, repo.branch, repo.path);
             vscode.env.openExternal(vscode.Uri.parse(url));
         }),
 
@@ -462,10 +471,16 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             marketplaceProvider.suppressConfigRefresh();
-            await config.update('skillRepositories', [...repositories, newRepo], vscode.ConfigurationTarget.Global);
-            await marketplaceProvider.addRepoToMarketplace(newRepo);
-            marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
-            vscode.window.showInformationMessage(`Added ${newRepo.owner}/${newRepo.repo} to the marketplace.`);
+            try {
+                await config.update('skillRepositories', [...repositories, newRepo], vscode.ConfigurationTarget.Global);
+                await marketplaceProvider.addRepoToMarketplace(newRepo);
+                marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
+                vscode.window.showInformationMessage(`Added ${newRepo.owner}/${newRepo.repo} to the marketplace.`);
+            } catch (e) {
+                // Reset suppression so external config changes aren't silently ignored
+                marketplaceProvider.shouldHandleConfigChange();
+                throw e;
+            }
         })
     ];
 

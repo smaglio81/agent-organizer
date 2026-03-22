@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 import MarkdownIt from 'markdown-it';
-import { Skill } from '../types';
+import { Skill, buildGitHubUrl } from '../types';
 import { InstalledSkillsTreeDataProvider } from './installedProvider';
 
 export class SkillDetailPanel {
@@ -119,7 +119,7 @@ export class SkillDetailPanel {
             return this._getErrorHtml('Invalid skill data. Please close this panel and try again.');
         }
         
-        const sourceUrl = `https://github.com/${skill.source.owner}/${skill.source.repo}/tree/${skill.source.branch}/${skill.skillPath}`;
+        const sourceUrl = buildGitHubUrl(skill.source.owner, skill.source.repo, skill.source.branch, skill.skillPath);
         const isInstalled = this._installedProvider.isSkillInstalled(skill.name);
         
         // Convert markdown body to HTML

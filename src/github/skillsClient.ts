@@ -92,7 +92,8 @@ export class GitHubSkillsClient {
         }
 
         // Use Git Trees API to get entire directory structure in ONE call
-        const tree = await this.fetchRepoTree(repo.owner, repo.repo, repo.branch);
+        const branch = repo.branch || 'main';
+        const tree = await this.fetchRepoTree(repo.owner, repo.repo, branch);
         
         // Find all SKILL.md files under the configured path
         const skillMdFiles = tree.tree.filter(item => 
@@ -180,7 +181,7 @@ export class GitHubSkillsClient {
         const skillMdPath = `${skillPath}/SKILL.md`;
         
         try {
-            const content = await this.fetchRawContent(repo.owner, repo.repo, skillMdPath, repo.branch);
+            const content = await this.fetchRawContent(repo.owner, repo.repo, skillMdPath, repo.branch || 'main');
             const parsed = this.parseSkillMd(content);
             
             return {

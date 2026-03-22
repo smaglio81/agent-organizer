@@ -637,8 +637,9 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
                     watchers.push(watcher);
                 }
             } else {
-                // Workspace-relative locations: watch using glob pattern
-                const watcher = vscode.workspace.createFileSystemWatcher(`**/${location}/**/*`);
+                // Workspace-relative locations: normalize backslashes for glob compatibility
+                const normalizedLoc = normalizeSeparators(location);
+                const watcher = vscode.workspace.createFileSystemWatcher(`**/${normalizedLoc}/**/*`);
                 watcher.onDidChange(fileUri => this.onSkillFileChanged(fileUri));
                 watcher.onDidCreate(fileUri => this.onSkillFileChanged(fileUri));
                 watcher.onDidDelete(fileUri => this.onSkillFileChanged(fileUri));

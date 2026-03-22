@@ -111,3 +111,13 @@ export function isSameRepository(left: SkillRepository, right: SkillRepository):
 export function normalizeSeparators(location: string): string {
     return location.replace(/\\/g, '/');
 }
+
+/**
+ * Build a GitHub URL for a skill or repository path.
+ * Falls back to 'main' when branch is missing and URL-encodes all segments.
+ */
+export function buildGitHubUrl(owner: string, repo: string, branch: string | undefined, skillPath: string): string {
+    const safeBranch = encodeURIComponent(branch || 'main');
+    const safePath = skillPath.split('/').map(encodeURIComponent).join('/');
+    return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree/${safeBranch}/${safePath}`;
+}

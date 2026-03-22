@@ -139,7 +139,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
      */
     private skillCacheKey(skill: Skill): string {
         const s = skill.source;
-        return `${s.owner}/${s.repo}/${s.path}@${s.branch}/${skill.skillPath}`;
+        return `${s.owner}/${s.repo}/${s.path}@${s.branch || 'main'}/${skill.skillPath}`;
     }
 
     /**
@@ -414,7 +414,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
                 return [this.createEmptyItem()];
             }
 
-            if (filteredSkills.length === 0 && this.searchQuery && this.failures.length === 0 && this.loadingRepos.length === 0) {
+            if (filteredSkills.length === 0 && this.searchQuery) {
                 return [this.createNoResultsItem()];
             }
 
@@ -494,7 +494,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
      * owner, repo, path, and branch so distinct configs stay separate.
      */
     private repoGroupKey(repo: SkillRepository): string {
-        return `${repo.owner}/${repo.repo}/${repo.path}@${repo.branch}`;
+        return `${repo.owner}/${repo.repo}/${repo.path}@${repo.branch || 'main'}`;
     }
 
     /**
@@ -532,7 +532,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
         }
 
         // Path collides — include branch to disambiguate
-        return `${base} (${repo.path} @ ${repo.branch})`;
+        return `${base} (${repo.path} @ ${repo.branch || 'main'})`;
     }
 
     private createEmptyItem(): SkillTreeItem {
