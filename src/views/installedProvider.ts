@@ -143,8 +143,6 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
     private readonly COLLAPSED_STATE_KEY = 'agentSkills.collapsedLocations';
     private treeView?: vscode.TreeView<TreeNode>;
     private locationItems: Map<string, LocationTreeItem> = new Map();
-    private skillItems: Map<string, InstalledSkillTreeItem> = new Map();
-    private folderItems: Map<string, SkillFolderTreeItem> = new Map();
     /** Active file watchers for duplicate status; disposed and recreated on refresh */
     private activeWatchers: vscode.Disposable[] = [];
     /** Current search filter query */
@@ -673,6 +671,11 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
             watcher.dispose();
         }
         this.activeWatchers = [];
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = undefined;
+        }
+        this.pendingSkillNames.clear();
     }
 
     /**
@@ -712,7 +715,10 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         const locations = this.pathService.getScanLocations();
         const installed: InstalledSkill[] = [];
 
-        for (const location of locations) {
+        for (const rawLocation of locations) {
+            // Normalize separators so all downstream code (getParent,
+            // groupSkillsByLocation, etc.) consistently sees forward slashes
+            const location = rawLocation.replace(/\\/g, '/');
             const locationWorkspaceFolder = this.pathService.requiresWorkspaceFolder(location)
                 ? workspaceFolder
                 : undefined;
@@ -846,7 +852,6 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
             for (const [name] of folders) {
                 const folderUri = vscode.Uri.joinPath(skillUri, name);
                 const folderItem = new SkillFolderTreeItem(folderUri, name, skillItem);
-                this.folderItems.set(folderUri.fsPath, folderItem);
                 items.push(folderItem);
             }
             
@@ -888,7 +893,6 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
             for (const [name] of folders) {
                 const childFolderUri = vscode.Uri.joinPath(folderUri, name);
                 const childFolderItem = new SkillFolderTreeItem(childFolderUri, name, folderItem);
-                this.folderItems.set(childFolderUri.fsPath, childFolderItem);
                 items.push(childFolderItem);
             }
             
@@ -933,7 +937,6 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
                 const skillUri = vscode.Uri.joinPath(dir, skillName);
                 const status = this.duplicateStatusMap.get(skill.location) || 'unique';
                 const item = new InstalledSkillTreeItem(skill, skillUri, status);
-                this.skillItems.set(skillUri.fsPath, item);
                 result.push(item);
             }
             return result;

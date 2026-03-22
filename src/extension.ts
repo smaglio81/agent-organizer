@@ -468,10 +468,13 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(...commands, marketplaceTreeView, installedTreeView);
 
-    // Watch for workspace skill folder changes (SKILL.md create/delete triggers full rescan)
-    const skillFolderPaths = ['.github/skills', '.claude/skills', '.agents/skills'];
-    const skillWatchers = skillFolderPaths.map(path => {
-        const watcher = vscode.workspace.createFileSystemWatcher(`**/${path}/*/SKILL.md`);
+    // Watch for SKILL.md create/delete in workspace-relative scan locations
+    // to trigger a full rescan. Derived from pathService so custom locations
+    // configured via chat.agentSkillsLocations are included automatically.
+    const workspaceScanLocations = pathService.getScanLocations()
+        .filter(loc => !pathService.isHomeLocation(loc));
+    const skillWatchers = workspaceScanLocations.map(loc => {
+        const watcher = vscode.workspace.createFileSystemWatcher(`**/${loc}/*/SKILL.md`);
         watcher.onDidCreate(() => syncInstalledStatus());
         watcher.onDidDelete(() => syncInstalledStatus());
         return watcher;

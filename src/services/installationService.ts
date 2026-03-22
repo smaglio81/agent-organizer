@@ -154,13 +154,22 @@ export class SkillInstallationService {
     }
 
     /**
+     * Normalize a location string to use forward slashes consistently,
+     * so path splitting works regardless of OS separator style.
+     */
+    private normalizeSeparators(location: string): string {
+        return location.replace(/\\/g, '/');
+    }
+
+    /**
      * Extract the actual folder basename from a skill's location path.
      * skill.location is e.g. "~/.copilot/skills/my-skill" — the last segment
      * is the real folder name on disk, which may differ from skill.name (frontmatter).
      */
     private getSkillFolderName(skill: InstalledSkill): string {
-        const lastSlash = skill.location.lastIndexOf('/');
-        return lastSlash >= 0 ? skill.location.substring(lastSlash + 1) : skill.location;
+        const normalized = this.normalizeSeparators(skill.location);
+        const lastSlash = normalized.lastIndexOf('/');
+        return lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
     }
 
     /**
@@ -170,7 +179,7 @@ export class SkillInstallationService {
         const locations = this.pathService.getScanLocations();
         // skill.location includes the skill name (e.g. "~/.copilot/skills/my-skill"),
         // strip the trailing segment to get the parent scan location for display
-        const currentParentLocation = skill.location.replace(/\/[^/]+$/, '');
+        const currentParentLocation = this.normalizeSeparators(skill.location).replace(/\/[^/]+$/, '');
         // Use the actual folder name on disk, not the frontmatter name
         const folderName = this.getSkillFolderName(skill);
 
@@ -251,7 +260,7 @@ export class SkillInstallationService {
     async copySkill(skill: InstalledSkill): Promise<boolean> {
         const locations = this.pathService.getScanLocations();
         // Strip trailing skill name to get the parent scan location for display
-        const currentParentLocation = skill.location.replace(/\/[^/]+$/, '');
+        const currentParentLocation = this.normalizeSeparators(skill.location).replace(/\/[^/]+$/, '');
         // Use the actual folder name on disk, not the frontmatter name
         const folderName = this.getSkillFolderName(skill);
 

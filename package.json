@@ -372,7 +372,7 @@
         "agentSkills.installLocation": {
           "type": "string",
           "default": ".github/skills",
-          "description": "Where to install skills: in the current workspace or in the user's home directory (~/). Must be one of the locations defined in chat.agentSkillsLocations."
+          "description": "Where to install skills: in the current workspace or in the user's home directory (~/). It is recommended to use one of the locations defined in chat.agentSkillsLocations so that installed skills are detected correctly."
         },
         "agentSkills.githubToken": {
           "type": "string",
