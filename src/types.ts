@@ -123,12 +123,13 @@ export function buildGitHubUrl(owner: string, repo: string, branch: string, skil
 
 /**
  * Normalize a SkillRepository read from user config.
- * Ensures branch defaults to 'main' when omitted and trims path.
+ * Ensures branch defaults to 'main' when omitted, trims path,
+ * and converts backslashes to forward slashes in path.
  */
 export function normalizeRepository(repo: SkillRepository): SkillRepository {
     return {
         ...repo,
         branch: repo.branch || 'main',
-        path: (repo.path || '').trim()
+        path: normalizeSeparators((repo.path || '').trim())
     };
 }

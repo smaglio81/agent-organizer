@@ -57,7 +57,13 @@
     "viewsWelcome": [
       {
         "view": "agentSkills.installed",
-        "contents": "Loading ...\n[Browse Marketplace](command:agentSkills.focusMarketplace)"
+        "contents": "Loading ...",
+        "when": "!agentSkills:initialScanComplete"
+      },
+      {
+        "view": "agentSkills.installed",
+        "contents": "No skills installed yet.\n[Browse Marketplace](command:agentSkills.focusMarketplace)",
+        "when": "agentSkills:initialScanComplete"
       }
     ],
     "commands": [

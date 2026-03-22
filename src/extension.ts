@@ -251,7 +251,7 @@ export function activate(context: vscode.ExtensionContext) {
             const fileUri = vscode.Uri.joinPath(resolveParentUri(item), fileName.trim());
             await vscode.workspace.fs.writeFile(fileUri, new Uint8Array());
             await vscode.commands.executeCommand('vscode.open', fileUri);
-            installedProvider.refresh();
+            await installedProvider.refresh();
         }),
 
         // Add a new folder inside a skill or skill subfolder
@@ -263,7 +263,7 @@ export function activate(context: vscode.ExtensionContext) {
             if (!folderName) { return; }
             const folderUri = vscode.Uri.joinPath(resolveParentUri(item), folderName.trim());
             await vscode.workspace.fs.createDirectory(folderUri);
-            installedProvider.refresh();
+            await installedProvider.refresh();
         }),
 
         // Rename a file inside a skill folder
@@ -278,19 +278,19 @@ export function activate(context: vscode.ExtensionContext) {
             if (!newName || newName.trim() === oldName) { return; }
             const newUri = vscode.Uri.joinPath(parentUri, newName.trim());
             await vscode.workspace.fs.rename(item.fileUri, newUri);
-            installedProvider.refresh();
+            await installedProvider.refresh();
         }),
 
         // Delete a file inside a skill folder (moved to trash)
         vscode.commands.registerCommand('agentSkills.deleteSkillFile', async (item: SkillFileTreeItem) => {
             await vscode.workspace.fs.delete(item.fileUri, { useTrash: true });
-            installedProvider.refresh();
+            await installedProvider.refresh();
         }),
 
         // Delete a subfolder inside a skill folder (moved to trash)
         vscode.commands.registerCommand('agentSkills.deleteSkillFolder', async (item: SkillFolderTreeItem) => {
             await vscode.workspace.fs.delete(item.folderUri, { recursive: true, useTrash: true });
-            installedProvider.refresh();
+            await installedProvider.refresh();
         }),
 
         // Move skill to a different location
@@ -513,11 +513,11 @@ export function activate(context: vscode.ExtensionContext) {
                     }
                 });
                 if (rawPath === undefined) { return; }
-                // Normalize: trim whitespace and strip leading/trailing slashes
-                skillsPath = rawPath.trim().replace(/^\/+|\/+$/g, '');
+                // Normalize: trim whitespace, convert backslashes, strip leading/trailing slashes
+                skillsPath = normalizeSeparators(rawPath.trim()).replace(/^\/+|\/+$/g, '');
             } else {
                 // Normalize path extracted from URL
-                skillsPath = skillsPath.trim().replace(/^\/+|\/+$/g, '');
+                skillsPath = normalizeSeparators(skillsPath.trim()).replace(/^\/+|\/+$/g, '');
             }
 
             const newRepo: SkillRepository = {

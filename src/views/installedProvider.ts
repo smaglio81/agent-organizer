@@ -166,6 +166,9 @@ export class InstalledSkillsTreeDataProvider implements vscode.TreeDataProvider<
         this.scanInstalledSkills().then(async skills => {
             this.installedSkills = skills;
             this.initialLoading = false;
+            // Signal that the initial scan is done so the welcome message switches
+            // from "Loading ..." to "No skills installed yet"
+            vscode.commands.executeCommand('setContext', 'agentSkills:initialScanComplete', true);
             await this.computeDuplicateStatuses();
             this._onDidChangeTreeData.fire();
         });
