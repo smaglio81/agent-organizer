@@ -1,10 +1,38 @@
 # Change Log
 
-All notable changes to the "agent-skills" extension will be documented in this file.
+All notable changes to the "agent-organizer" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.5]
+
+### Changed
+
+- Renamed the Installed view from "Installed" (`agentOrganizer.installed`) to "Skills" (`agentOrganizer.skills`).
+- Skill names parsed from `SKILL.md` frontmatter now have surrounding quotes (single or double) stripped. This also affects the folder name used when installing a skill.
+
+### Added
+
+- Marketplace View
+  - Right-click menus
+    - On Skill
+      - "Open in Browser" — opens the skill's GitHub folder in the default browser.
+- Skills View
+  - Right-click menus
+    - On Root Folder (location)
+      - "Reveal in File Explorer" — opens the location folder in the system file explorer. Grouped with Delete.
+    - On Skill
+      - "Reveal in File Explorer" — opens the skill folder in the system file explorer. Grouped with Add File / Add Folder.
+    - On Skill Subfolder
+      - "Reveal in File Explorer" — opens the subfolder in the system file explorer. Grouped with Add File / Add Folder.
+    - On File
+      - "Reveal in File Explorer" — opens the file's location in the system file explorer. Grouped with Rename.
+
 ## [0.0.4]
+
+### Changed
+
+- Renamed extension from "Agent Skills" to "Agent Organizer". All command IDs, configuration keys, view IDs, and context keys updated from `agentSkills.*` to `agentOrganizer.*`.
 
 ### Added
 
@@ -21,8 +49,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
       - "Open in Browser" — opens the repository on GitHub in the default browser
     - On Skill
       - "Install skill" (in addition to the existing inline install skill icon)
-  - Toolbar now includes `agentSkills.addRepository` (Add Repository).
-    - Users can add a repository by GitHub URL; the extension parses URL forms like `github.com/owner/repo` and `github.com/owner/repo/tree/<branch>/<path>` and writes the parsed entry to `agentSkills.skillRepositories`.
+  - Toolbar now includes `agentOrganizer.addRepository` (Add Repository).
+    - Users can add a repository by GitHub URL; the extension parses URL forms like `github.com/owner/repo` and `github.com/owner/repo/tree/<branch>/<path>` and writes the parsed entry to `agentOrganizer.skillRepositories`.
     - When a GitHub URL does not include a branch, the extension resolves the repo's default branch via GitHub API before adding the entry.
   - Defaults to collapsed
 - Installed Skills View
@@ -63,10 +91,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Marketplace repository and skill entries are now alphabetically sorted.
 - Installed skills in Marketplace now use a green check icon.
 - Removing a repository from Marketplace no longer shows a confirmation modal.
-- `agentSkills.installLocation` no longer enforces a fixed enum of values; any string path is accepted.
+- `agentOrganizer.installLocation` no longer enforces a fixed enum of values; any string path is accepted.
 - Scan locations for the Installed view are now sourced from the `chat.agentSkillsLocations` setting (maintained by VS Code) instead of being hardcoded. Falls back to the previous default set of six locations if the setting is not configured.
 - Installed tree view UX improvements: collapse/expand state persistence, marketplace default collapsed state, split refresh commands.
-- Split `agentSkills.refresh` into two commands: `agentSkills.refresh` (marketplace only) and `agentSkills.refreshInstalled` (installed only).
+- Split `agentOrganizer.refresh` into two commands: `agentOrganizer.refresh` (marketplace only) and `agentOrganizer.refreshInstalled` (installed only).
 - Installed Skills view initially shows "Loading ..." and then "Searching for installed skills..." with a spinner during the initial scan.
 
 ## [0.0.3]

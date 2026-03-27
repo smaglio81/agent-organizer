@@ -1,10 +1,10 @@
 {
-  "name": "agent-skills",
-  "displayName": "Agent Skills",
-  "description": "Agent Skills Marketplace and Toolkit",
+  "name": "agent-organizer",
+  "displayName": "Agent Organizer",
+  "description": "Agent Organizer Marketplace and Toolkit",
   "version": "0.0.4",
   "icon": "resources/logo.png",
-  "publisher": "formulahendry",
+  "publisher": "smaglio81",
   "engines": {
     "vscode": "^1.107.0"
   },
@@ -19,184 +19,188 @@
     "claude"
   ],
   "bugs": {
-    "url": "https://github.com/formulahendry/vscode-agent-skills/issues",
-    "email": "formulahendry@gmail.com"
+    "url": "https://github.com/smaglio81/agent-organizer/issues",
+    "email": "smaglio81@gmail.com"
   },
-  "homepage": "https://github.com/formulahendry/vscode-agent-skills/blob/main/README.md",
+  "homepage": "https://github.com/smaglio81/agent-organizer/blob/main/README.md",
   "repository": {
     "type": "git",
-    "url": "https://github.com/formulahendry/vscode-agent-skills.git"
+    "url": "https://github.com/smaglio81/agent-organizer.git"
   },
   "activationEvents": [
-    "onView:agentSkills.marketplace",
-    "onView:agentSkills.installed"
+    "onView:agentOrganizer.marketplace",
+    "onView:agentOrganizer.skills"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "agent-skills",
-          "title": "Agent Skills",
+          "id": "agent-organizer",
+          "title": "Agent Organizer",
           "icon": "resources/skills-icon.svg"
         }
       ]
     },
     "views": {
-      "agent-skills": [
+      "agent-organizer": [
         {
-          "id": "agentSkills.marketplace",
+          "id": "agentOrganizer.marketplace",
           "name": "Marketplace"
         },
         {
-          "id": "agentSkills.installed",
-          "name": "Installed"
+          "id": "agentOrganizer.skills",
+          "name": "Skills"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "agentSkills.installed",
+        "view": "agentOrganizer.skills",
         "contents": "Loading ...",
-        "when": "!agentSkills:initialScanComplete"
+        "when": "!agentOrganizer:initialScanComplete"
       },
       {
-        "view": "agentSkills.installed",
-        "contents": "No skills installed yet.\n[Browse Marketplace](command:agentSkills.focusMarketplace)",
-        "when": "agentSkills:initialScanComplete"
+        "view": "agentOrganizer.skills",
+        "contents": "No skills installed yet.\n[Browse Marketplace](command:agentOrganizer.focusMarketplace)",
+        "when": "agentOrganizer:initialScanComplete"
       }
     ],
     "commands": [
       {
-        "command": "agentSkills.install",
+        "command": "agentOrganizer.install",
         "title": "Install Skill",
         "icon": "$(cloud-download)"
       },
       {
-        "command": "agentSkills.uninstall",
+        "command": "agentOrganizer.uninstall",
         "title": "Delete",
         "icon": "$(trash)"
       },
       {
-        "command": "agentSkills.refresh",
+        "command": "agentOrganizer.refresh",
         "title": "Refresh Marketplace",
         "icon": "$(refresh)"
       },
       {
-        "command": "agentSkills.refreshInstalled",
+        "command": "agentOrganizer.refreshInstalled",
         "title": "Refresh Installed Skills",
         "icon": "$(refresh)"
       },
       {
-        "command": "agentSkills.viewDetails",
+        "command": "agentOrganizer.viewDetails",
         "title": "View Skill Details",
         "icon": "$(info)"
       },
       {
-        "command": "agentSkills.removeRepository",
+        "command": "agentOrganizer.removeRepository",
         "title": "Delete",
         "icon": "$(trash)"
       },
       {
-        "command": "agentSkills.addRepository",
+        "command": "agentOrganizer.addRepository",
         "title": "Add Repository",
         "icon": "$(add)"
       },
       {
-        "command": "agentSkills.search",
+        "command": "agentOrganizer.search",
         "title": "Search Marketplace Skills",
         "icon": "$(search)"
       },
       {
-        "command": "agentSkills.clearSearch",
+        "command": "agentOrganizer.clearSearch",
         "title": "Clear Marketplace Search",
         "icon": "$(close)"
       },
       {
-        "command": "agentSkills.openSkillFolder",
+        "command": "agentOrganizer.openSkillFolder",
         "title": "Open Skill Folder",
         "icon": "$(folder-opened)"
       },
       {
-        "command": "agentSkills.moveSkill",
+        "command": "agentOrganizer.moveSkill",
         "title": "Move to..."
       },
       {
-        "command": "agentSkills.copySkill",
+        "command": "agentOrganizer.copySkill",
         "title": "Copy to..."
       },
       {
-        "command": "agentSkills.syncSkill",
+        "command": "agentOrganizer.syncSkill",
         "title": "Update older skill copies with latest"
       },
       {
-        "command": "agentSkills.getLatestSkill",
+        "command": "agentOrganizer.getLatestSkill",
         "title": "Get latest copy of skill"
       },
       {
-        "command": "agentSkills.deleteAllSkills",
+        "command": "agentOrganizer.deleteAllSkills",
         "title": "Delete"
       },
       {
-        "command": "agentSkills.showInMarketplace",
+        "command": "agentOrganizer.showInMarketplace",
         "title": "Show in Marketplace"
       },
       {
-        "command": "agentSkills.openInBrowser",
+        "command": "agentOrganizer.openInBrowser",
         "title": "Open in Browser",
         "icon": "$(link-external)"
       },
       {
-        "command": "agentSkills.searchInstalled",
+        "command": "agentOrganizer.revealInFileExplorer",
+        "title": "Reveal in File Explorer"
+      },
+      {
+        "command": "agentOrganizer.searchInstalled",
         "title": "Search Installed Skills",
         "icon": "$(search)"
       },
       {
-        "command": "agentSkills.clearSearchInstalled",
+        "command": "agentOrganizer.clearSearchInstalled",
         "title": "Clear Installed Search",
         "icon": "$(close)"
       },
       {
-        "command": "agentSkills.focusMarketplace",
+        "command": "agentOrganizer.focusMarketplace",
         "title": "Focus Marketplace View"
       },
       {
-        "command": "agentSkills.selectInstallLocation",
+        "command": "agentOrganizer.selectInstallLocation",
         "title": "Install Location",
         "icon": "$(folder)"
       },
       {
-        "command": "agentSkills.expandAll",
+        "command": "agentOrganizer.expandAll",
         "title": "Expand All",
         "icon": "$(expand-all)"
       },
       {
-        "command": "agentSkills.collapseAll",
+        "command": "agentOrganizer.collapseAll",
         "title": "Collapse All",
         "icon": "$(collapse-all)"
       },
       {
-        "command": "agentSkills.addFile",
+        "command": "agentOrganizer.addFile",
         "title": "Add File",
         "icon": "$(new-file)"
       },
       {
-        "command": "agentSkills.addFolder",
+        "command": "agentOrganizer.addFolder",
         "title": "Add Folder",
         "icon": "$(new-folder)"
       },
       {
-        "command": "agentSkills.renameFile",
+        "command": "agentOrganizer.renameFile",
         "title": "Rename",
         "icon": "$(edit)"
       },
       {
-        "command": "agentSkills.deleteSkillFile",
+        "command": "agentOrganizer.deleteSkillFile",
         "title": "Delete",
         "icon": "$(trash)"
       },
       {
-        "command": "agentSkills.deleteSkillFolder",
+        "command": "agentOrganizer.deleteSkillFolder",
         "title": "Delete",
         "icon": "$(trash)"
       }
@@ -204,163 +208,188 @@
     "menus": {
       "view/title": [
         {
-          "command": "agentSkills.addRepository",
-          "when": "view == agentSkills.marketplace",
+          "command": "agentOrganizer.addRepository",
+          "when": "view == agentOrganizer.marketplace",
           "group": "navigation@0"
         },
         {
-          "command": "agentSkills.search",
-          "when": "view == agentSkills.marketplace",
+          "command": "agentOrganizer.search",
+          "when": "view == agentOrganizer.marketplace",
           "group": "navigation@1"
         },
         {
-          "command": "agentSkills.clearSearch",
-          "when": "view == agentSkills.marketplace && agentSkills:searchActive",
+          "command": "agentOrganizer.clearSearch",
+          "when": "view == agentOrganizer.marketplace && agentOrganizer:searchActive",
           "group": "navigation@1"
         },
         {
-          "command": "agentSkills.refresh",
-          "when": "view == agentSkills.marketplace",
+          "command": "agentOrganizer.refresh",
+          "when": "view == agentOrganizer.marketplace",
           "group": "navigation@2"
         },
         {
-          "command": "agentSkills.refreshInstalled",
-          "when": "view == agentSkills.installed",
+          "command": "agentOrganizer.refreshInstalled",
+          "when": "view == agentOrganizer.skills",
           "group": "navigation@2"
         },
         {
-          "command": "agentSkills.searchInstalled",
-          "when": "view == agentSkills.installed",
+          "command": "agentOrganizer.searchInstalled",
+          "when": "view == agentOrganizer.skills",
           "group": "navigation@1"
         },
         {
-          "command": "agentSkills.clearSearchInstalled",
-          "when": "view == agentSkills.installed && agentSkills:installedSearchActive",
+          "command": "agentOrganizer.clearSearchInstalled",
+          "when": "view == agentOrganizer.skills && agentOrganizer:installedSearchActive",
           "group": "navigation@1"
         },
         {
-          "command": "agentSkills.selectInstallLocation",
-          "when": "view == agentSkills.installed",
+          "command": "agentOrganizer.selectInstallLocation",
+          "when": "view == agentOrganizer.skills",
           "group": "navigation@3"
         },
         {
-          "command": "agentSkills.expandAll",
-          "when": "view == agentSkills.installed",
+          "command": "agentOrganizer.expandAll",
+          "when": "view == agentOrganizer.skills",
           "group": "navigation@4"
         },
         {
-          "command": "agentSkills.collapseAll",
-          "when": "view == agentSkills.installed",
+          "command": "agentOrganizer.collapseAll",
+          "when": "view == agentOrganizer.skills",
           "group": "navigation@5"
         }
       ],
       "view/item/context": [
         {
-          "command": "agentSkills.install",
-          "when": "view == agentSkills.marketplace && viewItem == skill",
+          "command": "agentOrganizer.install",
+          "when": "view == agentOrganizer.marketplace && viewItem == skill",
           "group": "inline@1"
         },
         {
-          "command": "agentSkills.install",
-          "when": "view == agentSkills.marketplace && viewItem == skill",
+          "command": "agentOrganizer.install",
+          "when": "view == agentOrganizer.marketplace && viewItem == skill",
           "group": "1_install@1"
         },
         {
-          "command": "agentSkills.viewDetails",
-          "when": "view == agentSkills.marketplace && viewItem == skill",
+          "command": "agentOrganizer.viewDetails",
+          "when": "view == agentOrganizer.marketplace && viewItem == skill",
           "group": "inline@2"
         },
         {
-          "command": "agentSkills.removeRepository",
-          "when": "view == agentSkills.marketplace && (viewItem == source || viewItem == failedSource)",
+          "command": "agentOrganizer.removeRepository",
+          "when": "view == agentOrganizer.marketplace && (viewItem == source || viewItem == failedSource)",
           "group": "inline@1"
         },
         {
-          "command": "agentSkills.openInBrowser",
-          "when": "view == agentSkills.marketplace && (viewItem == source || viewItem == failedSource)",
+          "command": "agentOrganizer.openInBrowser",
+          "when": "view == agentOrganizer.marketplace && (viewItem == source || viewItem == failedSource)",
           "group": "0_open@1"
         },
         {
-          "command": "agentSkills.removeRepository",
-          "when": "view == agentSkills.marketplace && (viewItem == source || viewItem == failedSource)",
+          "command": "agentOrganizer.openInBrowser",
+          "when": "view == agentOrganizer.marketplace && viewItem == skill",
+          "group": "2_open@1"
+        },
+        {
+          "command": "agentOrganizer.removeRepository",
+          "when": "view == agentOrganizer.marketplace && (viewItem == source || viewItem == failedSource)",
           "group": "1_delete@1"
         },
         {
-          "command": "agentSkills.addFile",
-          "when": "view == agentSkills.installed && (viewItem =~ /^installedSkill/ || viewItem == skillFolder)",
+          "command": "agentOrganizer.addFile",
+          "when": "view == agentOrganizer.skills && (viewItem =~ /^installedSkill/ || viewItem == skillFolder)",
           "group": "0_add@1"
         },
         {
-          "command": "agentSkills.addFolder",
-          "when": "view == agentSkills.installed && (viewItem =~ /^installedSkill/ || viewItem == skillFolder)",
+          "command": "agentOrganizer.addFolder",
+          "when": "view == agentOrganizer.skills && (viewItem =~ /^installedSkill/ || viewItem == skillFolder)",
           "group": "0_add@2"
         },
         {
-          "command": "agentSkills.renameFile",
-          "when": "view == agentSkills.installed && viewItem == skillFile",
+          "command": "agentOrganizer.renameFile",
+          "when": "view == agentOrganizer.skills && viewItem == skillFile",
           "group": "0_rename@1"
         },
         {
-          "command": "agentSkills.deleteSkillFile",
-          "when": "view == agentSkills.installed && viewItem == skillFile",
+          "command": "agentOrganizer.deleteSkillFile",
+          "when": "view == agentOrganizer.skills && viewItem == skillFile",
           "group": "2_delete@1"
         },
         {
-          "command": "agentSkills.deleteSkillFolder",
-          "when": "view == agentSkills.installed && viewItem == skillFolder",
+          "command": "agentOrganizer.deleteSkillFolder",
+          "when": "view == agentOrganizer.skills && viewItem == skillFolder",
           "group": "2_delete@1"
         },
         {
-          "command": "agentSkills.moveSkill",
-          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "command": "agentOrganizer.moveSkill",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
           "group": "1_move@1"
         },
         {
-          "command": "agentSkills.copySkill",
-          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "command": "agentOrganizer.copySkill",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
           "group": "1_move@2"
         },
         {
-          "command": "agentSkills.syncSkill",
-          "when": "view == agentSkills.installed && viewItem == installedSkill_newest",
+          "command": "agentOrganizer.syncSkill",
+          "when": "view == agentOrganizer.skills && viewItem == installedSkill_newest",
           "group": "1_move@3"
         },
         {
-          "command": "agentSkills.getLatestSkill",
-          "when": "view == agentSkills.installed && viewItem == installedSkill_older",
+          "command": "agentOrganizer.getLatestSkill",
+          "when": "view == agentOrganizer.skills && viewItem == installedSkill_older",
           "group": "1_move@4"
         },
         {
-          "command": "agentSkills.uninstall",
-          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "command": "agentOrganizer.uninstall",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
           "group": "inline@1"
         },
         {
-          "command": "agentSkills.uninstall",
-          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "command": "agentOrganizer.uninstall",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
           "group": "2_delete@1"
         },
         {
-          "command": "agentSkills.openSkillFolder",
-          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "command": "agentOrganizer.openSkillFolder",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
           "group": "inline@2"
         },
         {
-          "command": "agentSkills.showInMarketplace",
-          "when": "view == agentSkills.installed && viewItem =~ /^installedSkill/",
+          "command": "agentOrganizer.showInMarketplace",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
           "group": "3_marketplace@1"
         },
         {
-          "command": "agentSkills.deleteAllSkills",
-          "when": "view == agentSkills.installed && viewItem == location",
+          "command": "agentOrganizer.deleteAllSkills",
+          "when": "view == agentOrganizer.skills && viewItem == location",
           "group": "1_delete@1"
+        },
+        {
+          "command": "agentOrganizer.revealInFileExplorer",
+          "when": "view == agentOrganizer.skills && viewItem == location",
+          "group": "1_delete@2"
+        },
+        {
+          "command": "agentOrganizer.revealInFileExplorer",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
+          "group": "0_add@3"
+        },
+        {
+          "command": "agentOrganizer.revealInFileExplorer",
+          "when": "view == agentOrganizer.skills && viewItem == skillFolder",
+          "group": "0_add@3"
+        },
+        {
+          "command": "agentOrganizer.revealInFileExplorer",
+          "when": "view == agentOrganizer.skills && viewItem == skillFile",
+          "group": "0_rename@2"
         }
       ]
     },
     "configuration": {
-      "title": "Agent Skills",
+      "title": "Agent Organizer",
       "properties": {
-        "agentSkills.skillRepositories": {
+        "agentOrganizer.skillRepositories": {
           "type": "array",
           "default": [
             {
@@ -435,18 +464,18 @@
             ]
           }
         },
-        "agentSkills.installLocation": {
+        "agentOrganizer.installLocation": {
           "type": "string",
           "default": ".github/skills",
           "description": "Where to install skills: in the current workspace or in the user's home directory (~/). It is recommended to use one of the locations defined in chat.agentSkillsLocations so that installed skills are detected correctly."
         },
-        "agentSkills.githubToken": {
+        "agentOrganizer.githubToken": {
           "type": "string",
           "default": "",
           "description": "GitHub personal access token for higher API rate limits (optional)",
           "scope": "application"
         },
-        "agentSkills.cacheTimeout": {
+        "agentOrganizer.cacheTimeout": {
           "type": "number",
           "default": 3600,
           "description": "Cache timeout for marketplace data in seconds"
@@ -462,8 +491,8 @@
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "package:vsix": "npx vsce package",
-    "install:vsix": "npx vsce package && node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-skills-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('code --install-extension '+files[files.length-1], {stdio:'inherit'});\"",
-    "uninstall:vsix": "code --uninstall-extension formulahendry.agent-skills",
+    "install:vsix": "npx vsce package && node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-organizer-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('code --install-extension '+files[files.length-1], {stdio:'inherit'});\"",
+    "uninstall:vsix": "code --uninstall-extension formulahendry.agent-organizer",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",

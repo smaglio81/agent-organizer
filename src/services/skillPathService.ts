@@ -43,7 +43,7 @@ export class SkillPathService {
     }
 
     getInstallLocation(): string {
-        const config = vscode.workspace.getConfiguration('agentSkills');
+        const config = vscode.workspace.getConfiguration('agentOrganizer');
         return config.get<string>('installLocation', '.github/skills');
     }
 

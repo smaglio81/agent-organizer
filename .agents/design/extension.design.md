@@ -1,10 +1,10 @@
-# Agent Skills Extension Design
+# Agent Organizer Extension Design
 
 ## Overview
 
-The Agent Skills extension provides a VS Code interface for browsing, installing, and managing Agent Skills — reusable instruction sets (defined by `SKILL.md` files) that AI coding agents such as GitHub Copilot and Claude can load as context.
+The Agent Organizer extension provides a VS Code interface for browsing, installing, and managing Agent Organizer — reusable instruction sets (defined by `SKILL.md` files) that AI coding agents such as GitHub Copilot and Claude can load as context.
 
-The extension adds an **Agent Skills** activity bar container with two tree views:
+The extension adds an **Agent Organizer** activity bar container with two tree views:
 
 - **Marketplace** — Browse and install skills from configured GitHub repositories.
 - **Installed** — View and manage skills installed locally (in the workspace or user home directory).
@@ -17,10 +17,10 @@ Primary settings are under the `agentSkills` namespace. The Installed scan-locat
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `agentSkills.skillRepositories` | array | (6 defaults) | GitHub repositories to fetch marketplace skills from. Each entry has `owner`, `repo`, `path`, `branch`, and optional `singleSkill` flag. |
-| `agentSkills.installLocation` | string | `.github/skills` | Where newly installed skills are written. Must be one of the paths listed in `chat.agentSkillsLocations`. No longer restricted to a fixed enum. |
-| `agentSkills.githubToken` | string | `""` | Optional GitHub personal access token for higher API rate limits. |
-| `agentSkills.cacheTimeout` | number | `3600` | Seconds before cached marketplace data expires. |
+| `agentOrganizer.skillRepositories` | array | (6 defaults) | GitHub repositories to fetch marketplace skills from. Each entry has `owner`, `repo`, `path`, `branch`, and optional `singleSkill` flag. |
+| `agentOrganizer.installLocation` | string | `.github/skills` | Where newly installed skills are written. Must be one of the paths listed in `chat.agentSkillsLocations`. No longer restricted to a fixed enum. |
+| `agentOrganizer.githubToken` | string | `""` | Optional GitHub personal access token for higher API rate limits. |
+| `agentOrganizer.cacheTimeout` | number | `3600` | Seconds before cached marketplace data expires. |
 
 Related external setting: `chat.agentSkillsLocations` provides the location list used by Installed view scans and install-location validation.
 
@@ -49,7 +49,7 @@ When a skill is installed from the Marketplace, an `agent-skills-source` line is
 
 ## Marketplace View (summary)
 
-Fetches skills from the configured `agentSkills.skillRepositories` list using the GitHub Git Trees API (one API call per repository). Skills are grouped by source repository (`owner/repo`) and displayed in a collapsible tree. Loading is progressive per repository (each source appears immediately with a loading indicator, then resolves to loaded or failed state). Users can search, view details, install skills, add repositories by URL, and remove repositories from this view. Repositories that fail to load are still shown with a warning indicator and error tooltip. Repository and skill rows are alphabetically ordered. See `marketplace.design.md` for full details.
+Fetches skills from the configured `agentOrganizer.skillRepositories` list using the GitHub Git Trees API (one API call per repository). Skills are grouped by source repository (`owner/repo`) and displayed in a collapsible tree. Loading is progressive per repository (each source appears immediately with a loading indicator, then resolves to loaded or failed state). Users can search, view details, install skills, add repositories by URL, and remove repositories from this view. Repositories that fail to load are still shown with a warning indicator and error tooltip. Repository and skill rows are alphabetically ordered. See `marketplace.design.md` for full details.
 
 ## Installed View (summary)
 
@@ -61,7 +61,7 @@ Scans all known skill locations (workspace-relative and home-directory paths) fo
 
 | Service | Responsibility |
 |---|---|
-| `GitHubSkillsClient` | Fetches skill listings and file content from GitHub. Uses Git Trees API for efficiency; falls back to `raw.githubusercontent.com` for file content (no rate limit). Also resolves repository default branches for URL-based repository adds. Caches results per `agentSkills.cacheTimeout`. |
+| `GitHubSkillsClient` | Fetches skill listings and file content from GitHub. Uses Git Trees API for efficiency; falls back to `raw.githubusercontent.com` for file content (no rate limit). Also resolves repository default branches for URL-based repository adds. Caches results per `agentOrganizer.cacheTimeout`. |
 | `SkillPathService` | Resolves location strings (including `~` home paths) to `vscode.Uri` values. Provides the scan location list (read from `chat.agentSkillsLocations`, with a built-in default fallback) and the current install location. |
 | `SkillInstallationService` | Installs, deletes, moves, copies, syncs, and gets-latest for skills. Copies all files from GitHub into the resolved install target directory. Confirms overwrites with the user. Move and copy operations use a QuickPick to select the target scan location (current location marked); both normalize path separators and guard against selecting the same directory as the source. Delete sends the skill folder to trash without confirmation. Sync copies the newest skill to all other locations with older copies. Get-latest replaces an older copy with the newest version. Delete-all removes every skill under a location folder. |
 
@@ -73,7 +73,7 @@ Scans all known skill locations (workspace-relative and home-directory paths) fo
 |---|---|
 | `isSameRepository(a, b)` | Compares two `SkillRepository` entries by owner, repo, path, branch, and singleSkill. Used by both the Marketplace provider and extension commands (add/remove repository). |
 | `normalizeSeparators(p)` | Replaces backslashes with forward slashes. Used throughout the codebase (installed provider, installation service) to ensure consistent path separators on all platforms. |
-| `normalizeRepository(r)` | Defaults `branch` to `'main'` and trims `path`. Applied at every `agentSkills.skillRepositories` config read site so downstream code always sees well-formed entries, even when users manually edit settings.json and omit optional fields. |
+| `normalizeRepository(r)` | Defaults `branch` to `'main'` and trims `path`. Applied at every `agentOrganizer.skillRepositories` config read site so downstream code always sees well-formed entries, even when users manually edit settings.json and omit optional fields. |
 | `buildGitHubUrl(owner, repo, branch, path)` | Builds a GitHub URL with `'main'` fallback for missing branch and URL-encodes all segments. Used by Open in Browser, Skill Detail panel, and source frontmatter injection. |
 
 ---

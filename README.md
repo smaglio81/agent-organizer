@@ -1,6 +1,6 @@
-# Agent Skills Marketplace for VS Code
+# Agent Organizer Marketplace for VS Code
 
-A VS Code extension that provides a marketplace for discovering, installing, and managing [Agent Skills](https://agentskills.io) - reusable tools and capabilities for AI agents and Claude assistants.
+A VS Code extension that provides a marketplace for discovering, installing, and managing [Agent Organizer](https://agentOrganizer.io) - reusable tools and capabilities for AI agents and Claude assistants.
 
 ## Features
 
@@ -15,9 +15,9 @@ A VS Code extension that provides a marketplace for discovering, installing, and
 
 ## Screenshots
 
-![Agent Skills Marketplace](resources/screenshot.png)
+![Agent Organizer Marketplace](resources/screenshot.png)
 
-*Agent Skills Marketplace interface showing the skill marketplace and installed skills views*
+*Agent Organizer Marketplace interface showing the skill marketplace and installed skills views*
 
 ## Installation
 
@@ -27,7 +27,7 @@ Install: [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/i
 
 ### Browse Skills
 
-1. Open the Agent Skills panel in the Activity Bar (the skill icon)
+1. Open the Agent Organizer panel in the Activity Bar (the skill icon)
 2. Click on **Marketplace** tab to see all available skills
 3. Skills are grouped by source repository for easy browsing
 
@@ -87,23 +87,23 @@ Right-click any installed skill for quick actions:
 
 ## Configuration
 
-You can customize the extension behavior through VS Code settings. Press `Ctrl+,` (or `Cmd+,` on Mac) and search for "Agent Skills":
+You can customize the extension behavior through VS Code settings. Press `Ctrl+,` (or `Cmd+,` on Mac) and search for "Agent Organizer":
 
 ### Skill Repositories
 
-**Setting**: `agentSkills.skillRepositories`
+**Setting**: `agentOrganizer.skillRepositories`
 
 By default, the extension fetches skills from:
 - `anthropics/skills` - Official Anthropic skills
 - `github/awesome-copilot` - GitHub Copilot community skills
-- `pytorch/pytorch` - PyTorch agent skills
+- `pytorch/pytorch` - PyTorch Agent Organizer
 - `openai/skills` - OpenAI curated skills
 - `formulahendry/agent-skill-code-runner` - Code runner skill
 
 Add custom repositories by modifying this setting:
 
 ```json
-"agentSkills.skillRepositories": [
+"agentOrganizer.skillRepositories": [
   {
     "owner": "your-username",
     "repo": "your-skills-repo",
@@ -115,13 +115,13 @@ Add custom repositories by modifying this setting:
 
 ### Install Location
 
-**Setting**: `agentSkills.installLocation`
+**Setting**: `agentOrganizer.installLocation`
 
 Choose where to install skills in your workspace or home directory. Uses location list from `chat.agentSkillsLocations`.
 
 ### GitHub Token
 
-**Setting**: `agentSkills.githubToken`
+**Setting**: `agentOrganizer.githubToken`
 
 For higher GitHub API rate limits (especially when fetching from many repositories), provide a personal access token:
 
@@ -131,18 +131,18 @@ For higher GitHub API rate limits (especially when fetching from many repositori
 4. Add it to VS Code settings:
 
 ```json
-"agentSkills.githubToken": "your_token_here"
+"agentOrganizer.githubToken": "your_token_here"
 ```
 
 ### Cache Timeout
 
-**Setting**: `agentSkills.cacheTimeout`
+**Setting**: `agentOrganizer.cacheTimeout`
 
 Set how long (in seconds) to cache skill metadata (default: 3600 seconds / 1 hour)
 
 ## Skill Directory Structure
 
-Skills follow the [Agent Skills specification](https://agentskills.io). A typical skill structure:
+Skills follow the [Agent Organizer specification](https://agentOrganizer.io). A typical skill structure:
 
 ```
 my-skill/
@@ -178,13 +178,13 @@ Example code and use cases...
 
 The extension provides these commands (accessible via Command Palette `Ctrl+Shift+P`):
 
-- **Agent Skills: Search Skills** - Open search dialog
-- **Agent Skills: Clear Search** - Clear search and show all skills
-- **Agent Skills: Refresh** - Refresh the marketplace data
-- **Agent Skills: Install Skill** - Install selected skill
-- **Agent Skills: Uninstall Skill** - Uninstall selected skill
-- **Agent Skills: View Skill Details** - Open skill detail panel
-- **Agent Skills: Open Skill Folder** - Open installed skill folder in explorer
+- **Agent Organizer: Search Skills** - Open search dialog
+- **Agent Organizer: Clear Search** - Clear search and show all skills
+- **Agent Organizer: Refresh** - Refresh the marketplace data
+- **Agent Organizer: Install Skill** - Install selected skill
+- **Agent Organizer: Uninstall Skill** - Uninstall selected skill
+- **Agent Organizer: View Skill Details** - Open skill detail panel
+- **Agent Organizer: Open Skill Folder** - Open installed skill folder in explorer
 
 ## Performance
 
@@ -239,7 +239,7 @@ Users can then discover and install your skills through this marketplace!
 
 ## Learning More
 
-- [Agent Skills Specification](https://agentskills.io)
+- [Agent Organizer Specification](https://agentOrganizer.io)
 - [VS Code Extension Documentation](https://code.visualstudio.com/api)
 - [GitHub API Documentation](https://docs.github.com/en/rest)
 

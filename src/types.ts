@@ -1,5 +1,5 @@
 /**
- * Agent Skills type definitions
+ * Agent Organizer type definitions
  */
 
 /**

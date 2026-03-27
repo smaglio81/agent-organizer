@@ -1,5 +1,5 @@
 /**
- * GitHub API client for fetching Agent Skills from repositories
+ * GitHub API client for fetching Agent Organizer from repositories
  * 
  * OPTIMIZATION: Uses Git Trees API (1 call per repo) + raw.githubusercontent.com 
  * (no rate limit) to minimize GitHub API usage.
@@ -47,7 +47,7 @@ export class GitHubSkillsClient {
      * File content: Fetched via raw.githubusercontent.com (no API limit)
      */
     async fetchAllSkills(): Promise<{ skills: Skill[]; failures: FailedRepository[] }> {
-        const config = vscode.workspace.getConfiguration('agentSkills');
+        const config = vscode.workspace.getConfiguration('agentOrganizer');
         const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
         
         const allSkills: Skill[] = [];
@@ -328,7 +328,8 @@ export class GitHubSkillsClient {
     private setMetadataValue(metadata: SkillMetadata, key: string, value: string): void {
         switch (key) {
             case 'name':
-                metadata.name = value;
+                // Strip surrounding quotes (single or double) from skill names
+                metadata.name = value.replace(/^['"]|['"]$/g, '');
                 break;
             case 'description':
                 metadata.description = value;
@@ -349,7 +350,7 @@ export class GitHubSkillsClient {
      * Fetch with GitHub authentication if token is configured
      */
     private async fetchWithAuth(url: string, additionalHeaders?: Record<string, string>): Promise<Response> {
-        const config = vscode.workspace.getConfiguration('agentSkills');
+        const config = vscode.workspace.getConfiguration('agentOrganizer');
         const token = config.get<string>('githubToken', '');
         
         const headers: Record<string, string> = {
@@ -389,7 +390,7 @@ export class GitHubSkillsClient {
             return null;
         }
         
-        const config = vscode.workspace.getConfiguration('agentSkills');
+        const config = vscode.workspace.getConfiguration('agentOrganizer');
         const timeout = config.get<number>('cacheTimeout', 3600) * 1000;
         
         if (Date.now() - entry.timestamp > timeout) {

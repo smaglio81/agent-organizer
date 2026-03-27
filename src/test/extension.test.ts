@@ -132,7 +132,7 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('scanInstalledSkills expands ~ paths and skips missing directories before readDirectory', async () => {
-		const workspaceRoot = path.join(os.tmpdir(), 'agent-skills-test-workspace');
+		const workspaceRoot = path.join(os.tmpdir(), 'agent-organizer-test-workspace');
 		const workspaceUri = vscode.Uri.file(workspaceRoot);
 		const homeDir = os.homedir();
 		const normalizePath = (value: string) => path.normalize(value).replace(/[\\/]+$/, '').toLowerCase();
@@ -239,7 +239,7 @@ suite('Extension Test Suite', () => {
 		}
 
 		test('copySkill copies to target location and keeps source', async () => {
-			const tmpBase = path.join(os.tmpdir(), `agent-skills-copy-test-${Date.now()}`);
+			const tmpBase = path.join(os.tmpdir(), `agent-organizer-copy-test-${Date.now()}`);
 			const sourceBase = path.join(tmpBase, 'source-skills');
 			const targetBase = path.join(tmpBase, 'target-skills');
 
@@ -291,7 +291,7 @@ suite('Extension Test Suite', () => {
 		});
 
 		test('moveSkill copies to target and deletes source', async () => {
-			const tmpBase = path.join(os.tmpdir(), `agent-skills-move-test-${Date.now()}`);
+			const tmpBase = path.join(os.tmpdir(), `agent-organizer-move-test-${Date.now()}`);
 			const sourceBase = path.join(tmpBase, 'source-skills');
 			const targetBase = path.join(tmpBase, 'target-skills');
 
@@ -425,7 +425,7 @@ suite('Extension Test Suite', () => {
 
 	suite('Skill File and Folder Operations', () => {
 		test('add and delete a file inside a skill folder', async () => {
-			const tmpBase = path.join(os.tmpdir(), `agent-skills-file-test-${Date.now()}`);
+			const tmpBase = path.join(os.tmpdir(), `agent-organizer-file-test-${Date.now()}`);
 			const skillDir = vscode.Uri.file(path.join(tmpBase, 'my-skill'));
 			await vscode.workspace.fs.createDirectory(skillDir);
 
@@ -447,7 +447,7 @@ suite('Extension Test Suite', () => {
 		});
 
 		test('add and delete a folder inside a skill folder', async () => {
-			const tmpBase = path.join(os.tmpdir(), `agent-skills-folder-test-${Date.now()}`);
+			const tmpBase = path.join(os.tmpdir(), `agent-organizer-folder-test-${Date.now()}`);
 			const skillDir = vscode.Uri.file(path.join(tmpBase, 'my-skill'));
 			await vscode.workspace.fs.createDirectory(skillDir);
 

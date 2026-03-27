@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Marketplace view (`agentSkills.marketplace`) lets users browse skills available from configured GitHub repositories, search them by name or description, view their details, and install them into the local workspace or user home directory.
+The Marketplace view (`agentOrganizer.marketplace`) lets users browse skills available from configured GitHub repositories, search them by name or description, view their details, and install them into the local workspace or user home directory.
 
 ---
 
@@ -36,7 +36,7 @@ loading-owner/new-repo             ← LoadingSourceTreeItem (spinning icon)
 - Collapsible: none (leaf node)
 - Tooltip (markdown): name, full description, license (if present), source repo
 - `contextValue`: `skill`
-- Click action: opens the Skill Detail panel (`agentSkills.viewDetails`)
+- Click action: opens the Skill Detail panel (`agentOrganizer.viewDetails`)
 
 ### LoadingSourceTreeItem
 
@@ -59,7 +59,7 @@ loading-owner/new-repo             ← LoadingSourceTreeItem (spinning icon)
 
 ## Data Sources
 
-Skill repositories are configured via `agentSkills.skillRepositories`. Each entry specifies:
+Skill repositories are configured via `agentOrganizer.skillRepositories`. Each entry specifies:
 
 | Field | Description |
 |---|---|
@@ -79,20 +79,20 @@ Repository entries are normalized via `normalizeRepository()` when read from con
 
 Skills are fetched using the **Git Trees API** (one API call per repository), then `SKILL.md` files are read via `raw.githubusercontent.com` (no rate limit applies). This minimizes GitHub API usage regardless of how many skills a repository contains.
 
-Results are cached in memory per `agentSkills.cacheTimeout` seconds. An optional `agentSkills.githubToken` can be configured for higher rate limits.
+Results are cached in memory per `agentOrganizer.cacheTimeout` seconds. An optional `agentOrganizer.githubToken` can be configured for higher rate limits.
 
 ---
 
 ## Toolbar Actions
 
-All actions appear in the `agentSkills.marketplace` view title bar.
+All actions appear in the `agentOrganizer.marketplace` view title bar.
 
 | Button | Command | Description |
 |---|---|---|
-| Add Repository (add icon) | `agentSkills.addRepository` | Prompts for a GitHub URL and adds a new entry to `agentSkills.skillRepositories`. |
-| Search (search icon) | `agentSkills.search` | Opens an input box; filters displayed skills by name or description (case-insensitive). |
-| Clear Search (close icon) | `agentSkills.clearSearch` | Clears the active search filter. Only shown when a search is active (`agentSkills:searchActive` context key). |
-| Refresh (refresh icon) | `agentSkills.refresh` | Clears the cache and re-fetches all skills from GitHub. Also syncs installed skill indicators. |
+| Add Repository (add icon) | `agentOrganizer.addRepository` | Prompts for a GitHub URL and adds a new entry to `agentOrganizer.skillRepositories`. |
+| Search (search icon) | `agentOrganizer.search` | Opens an input box; filters displayed skills by name or description (case-insensitive). |
+| Clear Search (close icon) | `agentOrganizer.clearSearch` | Clears the active search filter. Only shown when a search is active (`agentOrganizer:searchActive` context key). |
+| Refresh (refresh icon) | `agentOrganizer.refresh` | Clears the cache and re-fetches all skills from GitHub. Also syncs installed skill indicators. |
 | Collapse All | Built-in VS Code | Collapses all source groups. Provided automatically via `showCollapseAll: true` on the TreeView. |
 
 ---
@@ -103,40 +103,41 @@ All actions appear in the `agentSkills.marketplace` view title bar.
 
 | Button | Command | Description |
 |---|---|---|
-| Install (cloud-download icon) | `agentSkills.install` | Downloads and writes the skill's files to the directory defined by `agentSkills.installLocation`. Shows a progress notification. Prompts before overwriting an existing install. |
-| View Details (info icon) | `agentSkills.viewDetails` | Opens the Skill Detail webview panel in the editor area, showing full `SKILL.md` content rendered as markdown. |
+| Install (cloud-download icon) | `agentOrganizer.install` | Downloads and writes the skill's files to the directory defined by `agentOrganizer.installLocation`. Shows a progress notification. Prompts before overwriting an existing install. |
+| View Details (info icon) | `agentOrganizer.viewDetails` | Opens the Skill Detail webview panel in the editor area, showing full `SKILL.md` content rendered as markdown. |
 
 ### SkillTreeItem Right-Click Context Menu
 
 | Menu Item | Command | Description |
 |---|---|---|
-| Install | `agentSkills.install` | Same as the inline Install button. |
+| Install | `agentOrganizer.install` | Same as the inline Install button. |
+| Open in Browser | `agentOrganizer.openInBrowser` | Opens the skill's GitHub folder in the system default browser. |
 
 ### SourceTreeItem / FailedSourceTreeItem Inline Buttons
 
 | Button | Command | Description |
 |---|---|---|
-| Delete (trash icon) | `agentSkills.removeRepository` | Removes a source entry from `agentSkills.skillRepositories` immediately (no confirmation prompt). |
+| Delete (trash icon) | `agentOrganizer.removeRepository` | Removes a source entry from `agentOrganizer.skillRepositories` immediately (no confirmation prompt). |
 
 ### SourceTreeItem / FailedSourceTreeItem Right-Click Context Menu
 
 | Menu Item | Command | Description |
 |---|---|---|
-| Open in Browser | `agentSkills.openInBrowser` | Opens the repository on GitHub in the system default browser. Appears first in the menu (group `0_open@1`). |
-| Delete | `agentSkills.removeRepository` | Removes a source entry from `agentSkills.skillRepositories` immediately (no confirmation prompt). |
+| Open in Browser | `agentOrganizer.openInBrowser` | Opens the repository on GitHub in the system default browser. Appears first in the menu (group `0_open@1`). |
+| Delete | `agentOrganizer.removeRepository` | Removes a source entry from `agentOrganizer.skillRepositories` immediately (no confirmation prompt). |
 
 ---
 
 ## Add Repository Flow
 
-`agentSkills.addRepository` workflow:
+`agentOrganizer.addRepository` workflow:
 
 1. Prompt user for a GitHub URL.
 2. Parse URL into `{ owner, repo, branch?, path? }`.
 3. If branch is missing, fetch repository default branch from GitHub API.
 4. If path is missing, prompt user for path (default: `skills`). Input is validated as non-empty and normalized (trimmed, leading/trailing slashes stripped).
 5. If path was extracted from the URL, it is also normalized (trimmed, leading/trailing slashes stripped).
-6. Build and append a `SkillRepository` entry to `agentSkills.skillRepositories` (global config).
+6. Build and append a `SkillRepository` entry to `agentOrganizer.skillRepositories` (global config).
 7. Incrementally fetch only that repository and append its node/skills into the Marketplace tree.
 
 If the repository load fails, a `FailedSourceTreeItem` is inserted instead of dropping the entry.
@@ -148,7 +149,7 @@ If the repository load fails, a `FailedSourceTreeItem` is inserted instead of dr
 - Filtering is applied to `name` and `description` fields (case-insensitive substring match).
 - Source groups containing no matching skills are hidden entirely.
 - When no results match, a "No results for '…'" placeholder is shown.
-- The `agentSkills:searchActive` VS Code context key is set to `true` when a query is active, enabling the Clear Search button.
+- The `agentOrganizer:searchActive` VS Code context key is set to `true` when a query is active, enabling the Clear Search button.
 - Failed repository entries are hidden while search is active.
 - Loading repository entries are hidden while search is active.
 
@@ -164,9 +165,9 @@ If the repository load fails, a `FailedSourceTreeItem` is inserted instead of dr
 
 ## Incremental Updates
 
-- `agentSkills.addRepository`: updates config, then fetches and inserts only the new repository entry.
-- `agentSkills.removeRepository`: updates config, then removes only the matching repository node and related skill/failure items from the tree.
-- Full refresh is still used for manual/external edits to `agentSkills.skillRepositories` and for explicit `agentSkills.refresh`.
+- `agentOrganizer.addRepository`: updates config, then fetches and inserts only the new repository entry.
+- `agentOrganizer.removeRepository`: updates config, then removes only the matching repository node and related skill/failure items from the tree.
+- Full refresh is still used for manual/external edits to `agentOrganizer.skillRepositories` and for explicit `agentOrganizer.refresh`.
 
 ---
 

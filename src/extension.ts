@@ -1,6 +1,6 @@
 /**
- * Agent Skills VS Code Extension
- * Provides a marketplace for browsing, installing, and managing Agent Skills
+ * Agent Organizer VS Code Extension
+ * Provides a marketplace for browsing, installing, and managing Agent Organizer
  */
 
 import * as vscode from 'vscode';
@@ -80,7 +80,7 @@ export function parseGitHubUrl(input: string): { owner: string; repo: string; br
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Agent Skills extension is now active!');
+    console.log('Agent Organizer extension is now active!');
 
     // Initialize services
     const githubClient = new GitHubSkillsClient(context);
@@ -92,7 +92,7 @@ export function activate(context: vscode.ExtensionContext) {
     const installedProvider = new InstalledSkillsTreeDataProvider(context, pathService);
 
     // Register TreeViews
-    const marketplaceTreeView = vscode.window.createTreeView('agentSkills.marketplace', {
+    const marketplaceTreeView = vscode.window.createTreeView('agentOrganizer.marketplace', {
         treeDataProvider: marketplaceProvider,
         showCollapseAll: true
     });
@@ -100,7 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Pass tree view reference to marketplace provider for reveal operations
     marketplaceProvider.setTreeView(marketplaceTreeView);
 
-    const installedTreeView = vscode.window.createTreeView('agentSkills.installed', {
+    const installedTreeView = vscode.window.createTreeView('agentOrganizer.skills', {
         treeDataProvider: installedProvider
     });
 
@@ -127,7 +127,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register commands
     const commands = [
         // Search skills
-        vscode.commands.registerCommand('agentSkills.search', async () => {
+        vscode.commands.registerCommand('agentOrganizer.search', async () => {
             const query = await vscode.window.showInputBox({
                 prompt: 'Search skills',
                 placeHolder: 'Enter skill name or keyword...'
@@ -138,12 +138,12 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Clear search
-        vscode.commands.registerCommand('agentSkills.clearSearch', () => {
+        vscode.commands.registerCommand('agentOrganizer.clearSearch', () => {
             marketplaceProvider.clearSearch();
         }),
 
         // Search installed skills
-        vscode.commands.registerCommand('agentSkills.searchInstalled', async () => {
+        vscode.commands.registerCommand('agentOrganizer.searchInstalled', async () => {
             const query = await vscode.window.showInputBox({
                 prompt: 'Search installed skills',
                 placeHolder: 'Enter skill name or keyword...'
@@ -154,24 +154,24 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Clear installed search
-        vscode.commands.registerCommand('agentSkills.clearSearchInstalled', () => {
+        vscode.commands.registerCommand('agentOrganizer.clearSearchInstalled', () => {
             installedProvider.clearSearch();
         }),
 
         // Refresh marketplace only
-        vscode.commands.registerCommand('agentSkills.refresh', async () => {
+        vscode.commands.registerCommand('agentOrganizer.refresh', async () => {
             await marketplaceProvider.refresh();
             marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
         }),
 
         // Refresh installed skills only
-        vscode.commands.registerCommand('agentSkills.refreshInstalled', async () => {
+        vscode.commands.registerCommand('agentOrganizer.refreshInstalled', async () => {
             await installedProvider.refresh();
             marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
         }),
 
         // View skill details - opens in editor area as WebviewPanel
-        vscode.commands.registerCommand('agentSkills.viewDetails', (item: SkillTreeItem | Skill | unknown) => {
+        vscode.commands.registerCommand('agentOrganizer.viewDetails', (item: SkillTreeItem | Skill | unknown) => {
             if (!item) {
                 vscode.window.showErrorMessage('No skill selected.');
                 return;
@@ -204,7 +204,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Install skill
-        vscode.commands.registerCommand('agentSkills.install', async (item: SkillTreeItem | Skill) => {
+        vscode.commands.registerCommand('agentOrganizer.install', async (item: SkillTreeItem | Skill) => {
             const skill = item instanceof SkillTreeItem ? item.skill : item;
             if (skill) {
                 const success = await installationService.installSkill(skill);
@@ -215,7 +215,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Uninstall skill
-        vscode.commands.registerCommand('agentSkills.uninstall', async (item: InstalledSkillTreeItem | InstalledSkill | Skill) => {
+        vscode.commands.registerCommand('agentOrganizer.uninstall', async (item: InstalledSkillTreeItem | InstalledSkill | Skill) => {
             let installedSkill: InstalledSkill | undefined;
             
             // Handle different input types
@@ -239,14 +239,32 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Open skill folder
-        vscode.commands.registerCommand('agentSkills.openSkillFolder', async (item: InstalledSkillTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.openSkillFolder', async (item: InstalledSkillTreeItem) => {
             if (item?.installedSkill) {
                 await installationService.openSkillFolder(item.installedSkill);
             }
         }),
 
+        // Reveal item in system file explorer
+        vscode.commands.registerCommand('agentOrganizer.revealInFileExplorer', (item: LocationTreeItem | InstalledSkillTreeItem | SkillFolderTreeItem | SkillFileTreeItem) => {
+            let uri: vscode.Uri | undefined;
+            if (item instanceof SkillFileTreeItem) {
+                uri = item.fileUri;
+            } else if (item instanceof SkillFolderTreeItem) {
+                uri = item.folderUri;
+            } else if (item instanceof InstalledSkillTreeItem) {
+                uri = item.skillUri;
+            } else if (item instanceof LocationTreeItem) {
+                const workspaceFolder = pathService.getWorkspaceFolderForLocation(item.location);
+                uri = pathService.resolveLocationToUri(item.location, workspaceFolder);
+            }
+            if (uri) {
+                vscode.commands.executeCommand('revealFileInOS', uri);
+            }
+        }),
+
         // Add a new file inside a skill or skill subfolder
-        vscode.commands.registerCommand('agentSkills.addFile', async (item: InstalledSkillTreeItem | SkillFolderTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.addFile', async (item: InstalledSkillTreeItem | SkillFolderTreeItem) => {
             const fileName = await vscode.window.showInputBox({
                 prompt: 'File name',
                 validateInput: value => validateItemName(value, 'File name')
@@ -259,7 +277,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Add a new folder inside a skill or skill subfolder
-        vscode.commands.registerCommand('agentSkills.addFolder', async (item: InstalledSkillTreeItem | SkillFolderTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.addFolder', async (item: InstalledSkillTreeItem | SkillFolderTreeItem) => {
             const folderName = await vscode.window.showInputBox({
                 prompt: 'Folder name',
                 validateInput: value => validateItemName(value, 'Folder name')
@@ -271,7 +289,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Rename a file inside a skill folder
-        vscode.commands.registerCommand('agentSkills.renameFile', async (item: SkillFileTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.renameFile', async (item: SkillFileTreeItem) => {
             const oldName = item.fileName;
             const parentUri = item.fileUri.with({ path: item.fileUri.path.replace(/\/[^/]+$/, '') });
             const newName = await vscode.window.showInputBox({
@@ -286,19 +304,19 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Delete a file inside a skill folder (moved to trash)
-        vscode.commands.registerCommand('agentSkills.deleteSkillFile', async (item: SkillFileTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.deleteSkillFile', async (item: SkillFileTreeItem) => {
             await vscode.workspace.fs.delete(item.fileUri, { useTrash: true });
             await installedProvider.refresh();
         }),
 
         // Delete a subfolder inside a skill folder (moved to trash)
-        vscode.commands.registerCommand('agentSkills.deleteSkillFolder', async (item: SkillFolderTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.deleteSkillFolder', async (item: SkillFolderTreeItem) => {
             await vscode.workspace.fs.delete(item.folderUri, { recursive: true, useTrash: true });
             await installedProvider.refresh();
         }),
 
         // Move skill to a different location
-        vscode.commands.registerCommand('agentSkills.moveSkill', async (item: InstalledSkillTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.moveSkill', async (item: InstalledSkillTreeItem) => {
             if (item?.installedSkill) {
                 const success = await installationService.moveSkill(item.installedSkill);
                 if (success) {
@@ -308,7 +326,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Copy skill to a different location
-        vscode.commands.registerCommand('agentSkills.copySkill', async (item: InstalledSkillTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.copySkill', async (item: InstalledSkillTreeItem) => {
             if (item?.installedSkill) {
                 const success = await installationService.copySkill(item.installedSkill);
                 if (success) {
@@ -318,7 +336,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Update older copies of a skill from the newest version
-        vscode.commands.registerCommand('agentSkills.syncSkill', async (item: InstalledSkillTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.syncSkill', async (item: InstalledSkillTreeItem) => {
             if (item?.installedSkill) {
                 const success = await installationService.syncSkill(
                     item.installedSkill,
@@ -331,7 +349,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Get latest version of a skill from the newest copy
-        vscode.commands.registerCommand('agentSkills.getLatestSkill', async (item: InstalledSkillTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.getLatestSkill', async (item: InstalledSkillTreeItem) => {
             if (item?.installedSkill) {
                 const newest = installedProvider.findNewestCopy(item.installedSkill.name);
                 if (newest) {
@@ -344,7 +362,7 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Delete all skills in a location folder
-        vscode.commands.registerCommand('agentSkills.deleteAllSkills', async (item: LocationTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.deleteAllSkills', async (item: LocationTreeItem) => {
             if (item?.skills) {
                 const success = await installationService.deleteAllSkillsInLocation(item.location, item.skills);
                 if (success) {
@@ -354,20 +372,20 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Show an installed skill in the Marketplace view
-        vscode.commands.registerCommand('agentSkills.showInMarketplace', async (item: InstalledSkillTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.showInMarketplace', async (item: InstalledSkillTreeItem) => {
             if (item?.installedSkill) {
                 await marketplaceProvider.revealSkillByName(item.installedSkill.name);
             }
         }),
 
         // Focus marketplace view (used in welcome message)
-        vscode.commands.registerCommand('agentSkills.focusMarketplace', () => {
+        vscode.commands.registerCommand('agentOrganizer.focusMarketplace', () => {
             marketplaceTreeView.reveal(undefined as unknown as SkillTreeItem, { focus: true });
         }),
 
         // Select install location
-        vscode.commands.registerCommand('agentSkills.selectInstallLocation', async () => {
-            const config = vscode.workspace.getConfiguration('agentSkills');
+        vscode.commands.registerCommand('agentOrganizer.selectInstallLocation', async () => {
+            const config = vscode.workspace.getConfiguration('agentOrganizer');
             const currentValue = config.get<string>('installLocation') || '.github/skills';
             
             // Get enum values from skillPathService
@@ -409,7 +427,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
             
             if (selected.label === 'Custom...') {
-                // Open settings.json and position cursor on agentSkills.installLocation
+                // Open settings.json and position cursor on agentOrganizer.installLocation
                 await vscode.commands.executeCommand('workbench.action.openSettingsJson');
                 
                 // Give VS Code a moment to open the settings
@@ -419,8 +437,8 @@ export function activate(context: vscode.ExtensionContext) {
                         const document = editor.document;
                         const text = document.getText();
                         
-                        // Find the agentSkills.installLocation setting
-                        const searchPattern = '"agentSkills.installLocation"';
+                        // Find the agentOrganizer.installLocation setting
+                        const searchPattern = '"agentOrganizer.installLocation"';
                         const index = text.indexOf(searchPattern);
                         
                         if (index !== -1) {
@@ -429,7 +447,7 @@ export function activate(context: vscode.ExtensionContext) {
                             editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
                         } else {
                             // Setting doesn't exist, add it
-                            vscode.window.showInformationMessage('Add "agentSkills.installLocation" to your settings.json');
+                            vscode.window.showInformationMessage('Add "agentOrganizer.installLocation" to your settings.json');
                         }
                     }
                 }, 100);
@@ -441,23 +459,23 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Expand all installed skills locations
-        vscode.commands.registerCommand('agentSkills.expandAll', async () => {
+        vscode.commands.registerCommand('agentOrganizer.expandAll', async () => {
             await installedProvider.expandAll();
         }),
 
         // Collapse all installed skills locations
-        vscode.commands.registerCommand('agentSkills.collapseAll', async () => {
+        vscode.commands.registerCommand('agentOrganizer.collapseAll', async () => {
             await installedProvider.collapseAll();
             // Use the built-in command to actually collapse the tree widget,
             // since TreeDataProvider has no API to programmatically collapse nodes.
-            await vscode.commands.executeCommand('workbench.actions.treeView.agentSkills.installed.collapseAll');
+            await vscode.commands.executeCommand('workbench.actions.treeView.agentOrganizer.skills.collapseAll');
         }),
 
         // Remove a skill repository from the marketplace
-        vscode.commands.registerCommand('agentSkills.removeRepository', async (item: SourceTreeItem | FailedSourceTreeItem) => {
+        vscode.commands.registerCommand('agentOrganizer.removeRepository', async (item: SourceTreeItem | FailedSourceTreeItem) => {
             const repo = item instanceof SourceTreeItem ? item.repo : item.failure.repo;
 
-            const config = vscode.workspace.getConfiguration('agentSkills');
+            const config = vscode.workspace.getConfiguration('agentOrganizer');
             const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
             const updated = repositories.filter(r => !isSameRepository(r, repo));
             // Suppress the config-change full refresh — we handle it incrementally below.
@@ -474,14 +492,20 @@ export function activate(context: vscode.ExtensionContext) {
         }),
 
         // Open a skill repository in the default browser
-        vscode.commands.registerCommand('agentSkills.openInBrowser', (item: SourceTreeItem | FailedSourceTreeItem) => {
-            const repo = item instanceof SourceTreeItem ? item.repo : item.failure.repo;
-            const url = buildGitHubUrl(repo.owner, repo.repo, repo.branch, repo.path);
-            vscode.env.openExternal(vscode.Uri.parse(url));
+        vscode.commands.registerCommand('agentOrganizer.openInBrowser', (item: SourceTreeItem | FailedSourceTreeItem | SkillTreeItem) => {
+            if (item instanceof SkillTreeItem) {
+                const skill = item.skill;
+                const url = buildGitHubUrl(skill.source.owner, skill.source.repo, skill.source.branch, skill.skillPath);
+                vscode.env.openExternal(vscode.Uri.parse(url));
+            } else {
+                const repo = item instanceof SourceTreeItem ? item.repo : item.failure.repo;
+                const url = buildGitHubUrl(repo.owner, repo.repo, repo.branch, repo.path);
+                vscode.env.openExternal(vscode.Uri.parse(url));
+            }
         }),
 
         // Add a new skill repository from a GitHub URL
-        vscode.commands.registerCommand('agentSkills.addRepository', async () => {
+        vscode.commands.registerCommand('agentOrganizer.addRepository', async () => {
             const input = await vscode.window.showInputBox({
                 prompt: 'Enter a GitHub repository URL',
                 placeHolder: 'https://github.com/owner/repo  or  https://github.com/owner/repo/tree/main/skills',
@@ -531,7 +555,7 @@ export function activate(context: vscode.ExtensionContext) {
                 branch
             };
 
-            const config = vscode.workspace.getConfiguration('agentSkills');
+            const config = vscode.workspace.getConfiguration('agentOrganizer');
             const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
 
             const isDuplicate = repositories.some(r => isSameRepository(r, newRepo));
@@ -583,7 +607,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Listen for configuration changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('agentSkills.skillRepositories')) {
+            if (e.affectsConfiguration('agentOrganizer.skillRepositories')) {
                 if (marketplaceProvider.shouldHandleConfigChange()) {
                     // External/manual config change — do a full refresh.
                     marketplaceProvider.refresh().then(() => {

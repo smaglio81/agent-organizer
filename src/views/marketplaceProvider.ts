@@ -48,7 +48,7 @@ export class SkillTreeItem extends vscode.TreeItem {
         
         // Click to view details
         this.command = {
-            command: 'agentSkills.viewDetails',
+            command: 'agentOrganizer.viewDetails',
             title: 'View Details',
             arguments: [skill]
         };
@@ -213,7 +213,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
     }
 
     private async loadRepositoriesProgressively(clearCache: boolean): Promise<void> {
-        const config = vscode.workspace.getConfiguration('agentSkills');
+        const config = vscode.workspace.getConfiguration('agentOrganizer');
         const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
 
         const generation = ++this.loadGeneration;
@@ -290,7 +290,7 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
      * Update VS Code context key for search state
      */
     private updateSearchContext(): void {
-        vscode.commands.executeCommand('setContext', 'agentSkills:searchActive', this.isSearchActive());
+        vscode.commands.executeCommand('setContext', 'agentOrganizer:searchActive', this.isSearchActive());
     }
 
     /**
