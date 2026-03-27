@@ -5,12 +5,79 @@
 
 import * as vscode from 'vscode';
 import { GitHubSkillsClient } from './github/skillsClient';
-import { MarketplaceTreeDataProvider, SkillTreeItem } from './views/marketplaceProvider';
-import { InstalledSkillsTreeDataProvider, InstalledSkillTreeItem } from './views/installedProvider';
+import { MarketplaceTreeDataProvider, SkillTreeItem, SourceTreeItem, FailedSourceTreeItem } from './views/marketplaceProvider';
+import { InstalledSkillsTreeDataProvider, InstalledSkillTreeItem, LocationTreeItem, SkillFolderTreeItem, SkillFileTreeItem } from './views/installedProvider';
 import { SkillDetailPanel } from './views/skillDetailPanel';
 import { SkillInstallationService } from './services/installationService';
 import { SkillPathService } from './services/skillPathService';
-import { Skill, InstalledSkill } from './types';
+import { Skill, InstalledSkill, SkillRepository, isSameRepository, normalizeSeparators, buildGitHubUrl, normalizeRepository } from './types';
+
+/**
+ * Validate a file or folder name: non-empty, no path separators, no traversal.
+ */
+function validateItemName(value: string | undefined, label: string): string | undefined {
+    if (!value?.trim()) { return `${label} is required`; }
+    if (/[/\\]/.test(value)) { return `${label} cannot contain path separators`; }
+    // Block . and .. to prevent path traversal via Uri.joinPath
+    if (value.trim() === '.' || value.trim() === '..') { return `${label} cannot be '.' or '..'`; }
+    // Block names containing .. segments (e.g. "..foo", "a..b") that could normalize to traversal
+    if (/\.\./.test(value.trim())) { return `${label} cannot contain '..'`; }
+    return undefined;
+}
+
+/**
+ * Resolve the parent URI from a skill or folder tree item.
+ */
+function resolveParentUri(item: InstalledSkillTreeItem | SkillFolderTreeItem): vscode.Uri {
+    return item instanceof InstalledSkillTreeItem ? item.skillUri : item.folderUri;
+}
+
+/**
+ * Parse a GitHub URL into its SkillRepository components.
+ * Handles these forms:
+ *   https://github.com/owner/repo
+ *   https://github.com/owner/repo/tree/branch
+ *   https://github.com/owner/repo/tree/branch/path/to/skills
+ *
+ * Returns undefined when the input cannot be parsed as a GitHub URL.
+ * `path` is undefined when it was not encoded in the URL (caller should prompt).
+ * `branch` is undefined when it was not encoded in the URL (caller should resolve via API).
+ */
+export function parseGitHubUrl(input: string): { owner: string; repo: string; branch: string | undefined; path: string | undefined } | undefined {
+    // Strip protocol, www prefix, query string, and fragment
+    const normalized = input.trim()
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .replace(/[?#].*$/, '');
+
+    if (!normalized.startsWith('github.com/')) {
+        return undefined;
+    }
+
+    const parts = normalized.slice('github.com/'.length).split('/').filter(p => p.length > 0);
+    if (parts.length < 2) {
+        return undefined;
+    }
+
+    const owner = parts[0];
+    // Strip trailing .git suffix from repo name
+    const repo = parts[1].replace(/\.git$/, '');
+
+    if (parts.length === 2) {
+        // Exactly owner/repo — valid bare form
+        return { owner, repo, branch: undefined, path: undefined };
+    }
+
+    // Only accept /tree/<branch>[/<path...>] beyond owner/repo
+    if (parts[2] !== 'tree' || parts.length < 4) {
+        return undefined;
+    }
+
+    const branch = parts[3];
+    const path = parts.length > 4 ? parts.slice(4).join('/') : undefined;
+
+    return { owner, repo, branch, path };
+}
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Agent Skills extension is now active!');
@@ -30,9 +97,26 @@ export function activate(context: vscode.ExtensionContext) {
         showCollapseAll: true
     });
 
+    // Pass tree view reference to marketplace provider for reveal operations
+    marketplaceProvider.setTreeView(marketplaceTreeView);
+
     const installedTreeView = vscode.window.createTreeView('agentSkills.installed', {
         treeDataProvider: installedProvider
     });
+
+    // Pass tree view reference to provider for expand/collapse operations
+    installedProvider.setTreeView(installedTreeView);
+
+    // Handle expand/collapse events to persist state
+    const collapseDisposable = installedTreeView.onDidCollapseElement(e => {
+        installedProvider.onDidCollapseElement(e.element);
+    });
+
+    const expandDisposable = installedTreeView.onDidExpandElement(e => {
+        installedProvider.onDidExpandElement(e.element);
+    });
+    
+    context.subscriptions.push(collapseDisposable, expandDisposable);
 
     // Helper to sync installed status with marketplace
     const syncInstalledStatus = async () => {
@@ -58,13 +142,32 @@ export function activate(context: vscode.ExtensionContext) {
             marketplaceProvider.clearSearch();
         }),
 
-        // Refresh marketplace and installed
+        // Search installed skills
+        vscode.commands.registerCommand('agentSkills.searchInstalled', async () => {
+            const query = await vscode.window.showInputBox({
+                prompt: 'Search installed skills',
+                placeHolder: 'Enter skill name or keyword...'
+            });
+            if (query !== undefined) {
+                installedProvider.setSearchQuery(query);
+            }
+        }),
+
+        // Clear installed search
+        vscode.commands.registerCommand('agentSkills.clearSearchInstalled', () => {
+            installedProvider.clearSearch();
+        }),
+
+        // Refresh marketplace only
         vscode.commands.registerCommand('agentSkills.refresh', async () => {
-            await Promise.all([
-                marketplaceProvider.refresh(),
-                installedProvider.refresh()
-            ]);
-            await syncInstalledStatus();
+            await marketplaceProvider.refresh();
+            marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
+        }),
+
+        // Refresh installed skills only
+        vscode.commands.registerCommand('agentSkills.refreshInstalled', async () => {
+            await installedProvider.refresh();
+            marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
         }),
 
         // View skill details - opens in editor area as WebviewPanel
@@ -142,30 +245,355 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }),
 
+        // Add a new file inside a skill or skill subfolder
+        vscode.commands.registerCommand('agentSkills.addFile', async (item: InstalledSkillTreeItem | SkillFolderTreeItem) => {
+            const fileName = await vscode.window.showInputBox({
+                prompt: 'File name',
+                validateInput: value => validateItemName(value, 'File name')
+            });
+            if (!fileName) { return; }
+            const fileUri = vscode.Uri.joinPath(resolveParentUri(item), fileName.trim());
+            await vscode.workspace.fs.writeFile(fileUri, new Uint8Array());
+            await vscode.commands.executeCommand('vscode.open', fileUri);
+            await installedProvider.refresh();
+        }),
+
+        // Add a new folder inside a skill or skill subfolder
+        vscode.commands.registerCommand('agentSkills.addFolder', async (item: InstalledSkillTreeItem | SkillFolderTreeItem) => {
+            const folderName = await vscode.window.showInputBox({
+                prompt: 'Folder name',
+                validateInput: value => validateItemName(value, 'Folder name')
+            });
+            if (!folderName) { return; }
+            const folderUri = vscode.Uri.joinPath(resolveParentUri(item), folderName.trim());
+            await vscode.workspace.fs.createDirectory(folderUri);
+            await installedProvider.refresh();
+        }),
+
+        // Rename a file inside a skill folder
+        vscode.commands.registerCommand('agentSkills.renameFile', async (item: SkillFileTreeItem) => {
+            const oldName = item.fileName;
+            const parentUri = item.fileUri.with({ path: item.fileUri.path.replace(/\/[^/]+$/, '') });
+            const newName = await vscode.window.showInputBox({
+                prompt: 'New file name',
+                value: oldName,
+                validateInput: value => validateItemName(value, 'File name')
+            });
+            if (!newName || newName.trim() === oldName) { return; }
+            const newUri = vscode.Uri.joinPath(parentUri, newName.trim());
+            await vscode.workspace.fs.rename(item.fileUri, newUri);
+            await installedProvider.refresh();
+        }),
+
+        // Delete a file inside a skill folder (moved to trash)
+        vscode.commands.registerCommand('agentSkills.deleteSkillFile', async (item: SkillFileTreeItem) => {
+            await vscode.workspace.fs.delete(item.fileUri, { useTrash: true });
+            await installedProvider.refresh();
+        }),
+
+        // Delete a subfolder inside a skill folder (moved to trash)
+        vscode.commands.registerCommand('agentSkills.deleteSkillFolder', async (item: SkillFolderTreeItem) => {
+            await vscode.workspace.fs.delete(item.folderUri, { recursive: true, useTrash: true });
+            await installedProvider.refresh();
+        }),
+
+        // Move skill to a different location
+        vscode.commands.registerCommand('agentSkills.moveSkill', async (item: InstalledSkillTreeItem) => {
+            if (item?.installedSkill) {
+                const success = await installationService.moveSkill(item.installedSkill);
+                if (success) {
+                    await syncInstalledStatus();
+                }
+            }
+        }),
+
+        // Copy skill to a different location
+        vscode.commands.registerCommand('agentSkills.copySkill', async (item: InstalledSkillTreeItem) => {
+            if (item?.installedSkill) {
+                const success = await installationService.copySkill(item.installedSkill);
+                if (success) {
+                    await syncInstalledStatus();
+                }
+            }
+        }),
+
+        // Update older copies of a skill from the newest version
+        vscode.commands.registerCommand('agentSkills.syncSkill', async (item: InstalledSkillTreeItem) => {
+            if (item?.installedSkill) {
+                const success = await installationService.syncSkill(
+                    item.installedSkill,
+                    installedProvider.getInstalledSkills()
+                );
+                if (success) {
+                    await syncInstalledStatus();
+                }
+            }
+        }),
+
+        // Get latest version of a skill from the newest copy
+        vscode.commands.registerCommand('agentSkills.getLatestSkill', async (item: InstalledSkillTreeItem) => {
+            if (item?.installedSkill) {
+                const newest = installedProvider.findNewestCopy(item.installedSkill.name);
+                if (newest) {
+                    const success = await installationService.getLatestSkillFrom(item.installedSkill, newest);
+                    if (success) {
+                        await syncInstalledStatus();
+                    }
+                }
+            }
+        }),
+
+        // Delete all skills in a location folder
+        vscode.commands.registerCommand('agentSkills.deleteAllSkills', async (item: LocationTreeItem) => {
+            if (item?.skills) {
+                const success = await installationService.deleteAllSkillsInLocation(item.location, item.skills);
+                if (success) {
+                    await syncInstalledStatus();
+                }
+            }
+        }),
+
+        // Show an installed skill in the Marketplace view
+        vscode.commands.registerCommand('agentSkills.showInMarketplace', async (item: InstalledSkillTreeItem) => {
+            if (item?.installedSkill) {
+                await marketplaceProvider.revealSkillByName(item.installedSkill.name);
+            }
+        }),
+
         // Focus marketplace view (used in welcome message)
         vscode.commands.registerCommand('agentSkills.focusMarketplace', () => {
             marketplaceTreeView.reveal(undefined as unknown as SkillTreeItem, { focus: true });
+        }),
+
+        // Select install location
+        vscode.commands.registerCommand('agentSkills.selectInstallLocation', async () => {
+            const config = vscode.workspace.getConfiguration('agentSkills');
+            const currentValue = config.get<string>('installLocation') || '.github/skills';
+            
+            // Get enum values from skillPathService
+            const enumValues = pathService.getScanLocations();
+            const normalizedCurrent = normalizeSeparators(currentValue);
+            
+            // Build quick pick items (normalize for comparison with current value)
+            const items: vscode.QuickPickItem[] = [];
+            
+            // Add enum values
+            for (const value of enumValues) {
+                items.push({
+                    label: value,
+                    description: normalizeSeparators(value) === normalizedCurrent ? '(current)' : undefined
+                });
+            }
+            
+            // Add current value if not in enum
+            if (!enumValues.some(v => normalizeSeparators(v) === normalizedCurrent)) {
+                items.unshift({
+                    label: currentValue,
+                    description: '(current)'
+                });
+            }
+            
+            // Add Custom option
+            items.push({
+                label: 'Custom...',
+                description: 'Edit in settings.json'
+            });
+            
+            // Show quick pick
+            const selected = await vscode.window.showQuickPick(items, {
+                placeHolder: 'Select install location for skills'
+            });
+            
+            if (!selected) {
+                return;
+            }
+            
+            if (selected.label === 'Custom...') {
+                // Open settings.json and position cursor on agentSkills.installLocation
+                await vscode.commands.executeCommand('workbench.action.openSettingsJson');
+                
+                // Give VS Code a moment to open the settings
+                setTimeout(async () => {
+                    const editor = vscode.window.activeTextEditor;
+                    if (editor) {
+                        const document = editor.document;
+                        const text = document.getText();
+                        
+                        // Find the agentSkills.installLocation setting
+                        const searchPattern = '"agentSkills.installLocation"';
+                        const index = text.indexOf(searchPattern);
+                        
+                        if (index !== -1) {
+                            const position = document.positionAt(index);
+                            editor.selection = new vscode.Selection(position, position);
+                            editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+                        } else {
+                            // Setting doesn't exist, add it
+                            vscode.window.showInformationMessage('Add "agentSkills.installLocation" to your settings.json');
+                        }
+                    }
+                }, 100);
+            } else {
+                // Update the configuration
+                await config.update('installLocation', selected.label, vscode.ConfigurationTarget.Global);
+                await installedProvider.refresh();
+            }
+        }),
+
+        // Expand all installed skills locations
+        vscode.commands.registerCommand('agentSkills.expandAll', async () => {
+            await installedProvider.expandAll();
+        }),
+
+        // Collapse all installed skills locations
+        vscode.commands.registerCommand('agentSkills.collapseAll', async () => {
+            await installedProvider.collapseAll();
+            // Use the built-in command to actually collapse the tree widget,
+            // since TreeDataProvider has no API to programmatically collapse nodes.
+            await vscode.commands.executeCommand('workbench.actions.treeView.agentSkills.installed.collapseAll');
+        }),
+
+        // Remove a skill repository from the marketplace
+        vscode.commands.registerCommand('agentSkills.removeRepository', async (item: SourceTreeItem | FailedSourceTreeItem) => {
+            const repo = item instanceof SourceTreeItem ? item.repo : item.failure.repo;
+
+            const config = vscode.workspace.getConfiguration('agentSkills');
+            const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
+            const updated = repositories.filter(r => !isSameRepository(r, repo));
+            // Suppress the config-change full refresh — we handle it incrementally below.
+            marketplaceProvider.suppressConfigRefresh();
+            try {
+                await config.update('skillRepositories', updated, vscode.ConfigurationTarget.Global);
+                marketplaceProvider.removeRepoFromMarketplace(repo);
+                marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
+            } catch (e) {
+                // Reset suppression so external config changes aren't silently ignored
+                marketplaceProvider.shouldHandleConfigChange();
+                throw e;
+            }
+        }),
+
+        // Open a skill repository in the default browser
+        vscode.commands.registerCommand('agentSkills.openInBrowser', (item: SourceTreeItem | FailedSourceTreeItem) => {
+            const repo = item instanceof SourceTreeItem ? item.repo : item.failure.repo;
+            const url = buildGitHubUrl(repo.owner, repo.repo, repo.branch, repo.path);
+            vscode.env.openExternal(vscode.Uri.parse(url));
+        }),
+
+        // Add a new skill repository from a GitHub URL
+        vscode.commands.registerCommand('agentSkills.addRepository', async () => {
+            const input = await vscode.window.showInputBox({
+                prompt: 'Enter a GitHub repository URL',
+                placeHolder: 'https://github.com/owner/repo  or  https://github.com/owner/repo/tree/main/skills',
+                validateInput: value => {
+                    if (!value?.trim()) { return 'URL is required'; }
+                    return parseGitHubUrl(value) ? undefined : 'Could not parse a GitHub repository URL from that input';
+                }
+            });
+            if (!input) { return; }
+
+            const parsed = parseGitHubUrl(input)!;
+
+            // Resolve the actual default branch when it wasn't in the URL
+            let branch: string;
+            try {
+                branch = parsed.branch ?? await githubClient.fetchDefaultBranch(parsed.owner, parsed.repo);
+            } catch {
+                vscode.window.showErrorMessage('Failed to fetch repository information. Please check the URL and your network connection.');
+                return;
+            }
+
+            // Prompt for the path within the repo when it was not encoded in the URL
+            let skillsPath = parsed.path;
+            if (skillsPath === undefined) {
+                const rawPath = await vscode.window.showInputBox({
+                    prompt: `Path within ${parsed.owner}/${parsed.repo} where skills are stored`,
+                    placeHolder: 'skills',
+                    value: 'skills',
+                    validateInput: value => {
+                        // Reject empty/whitespace-only input
+                        if (!value?.trim()) { return 'Path is required'; }
+                        return undefined;
+                    }
+                });
+                if (rawPath === undefined) { return; }
+                // Normalize: trim whitespace, convert backslashes, strip leading/trailing slashes
+                skillsPath = normalizeSeparators(rawPath.trim()).replace(/^\/+|\/+$/g, '');
+            } else {
+                // Normalize path extracted from URL
+                skillsPath = normalizeSeparators(skillsPath.trim()).replace(/^\/+|\/+$/g, '');
+            }
+
+            const newRepo: SkillRepository = {
+                owner: parsed.owner,
+                repo: parsed.repo,
+                path: skillsPath,
+                branch
+            };
+
+            const config = vscode.workspace.getConfiguration('agentSkills');
+            const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
+
+            const isDuplicate = repositories.some(r => isSameRepository(r, newRepo));
+            if (isDuplicate) {
+                vscode.window.showWarningMessage(
+                    `${newRepo.owner}/${newRepo.repo} (${newRepo.path}) is already in the marketplace.`
+                );
+                return;
+            }
+
+            marketplaceProvider.suppressConfigRefresh();
+            try {
+                await config.update('skillRepositories', [...repositories, newRepo], vscode.ConfigurationTarget.Global);
+                await marketplaceProvider.addRepoToMarketplace(newRepo);
+                marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
+                vscode.window.showInformationMessage(`Added ${newRepo.owner}/${newRepo.repo} to the marketplace.`);
+            } catch (e) {
+                // Reset suppression so external config changes aren't silently ignored
+                marketplaceProvider.shouldHandleConfigChange();
+                throw e;
+            }
         })
     ];
 
     context.subscriptions.push(...commands, marketplaceTreeView, installedTreeView);
 
-    // Watch for workspace skill folder changes
-    const skillsWatcher = vscode.workspace.createFileSystemWatcher('**/.github/skills/*/SKILL.md');
-    const claudeSkillsWatcher = vscode.workspace.createFileSystemWatcher('**/.claude/skills/*/SKILL.md');
+    // Watch for SKILL.md create/delete in workspace-relative scan locations
+    // to trigger a full rescan. Derived from pathService so custom locations
+    // configured via chat.agentSkillsLocations are included automatically.
+    const workspaceScanLocations = pathService.getScanLocations()
+        .filter(loc => !pathService.isHomeLocation(loc));
+    const skillWatchers = workspaceScanLocations.map(loc => {
+        // Normalize backslashes to forward slashes so the glob pattern works on Windows
+        const normalizedLoc = normalizeSeparators(loc);
+        const watcher = vscode.workspace.createFileSystemWatcher(`**/${normalizedLoc}/*/SKILL.md`);
+        watcher.onDidCreate(() => syncInstalledStatus());
+        watcher.onDidDelete(() => syncInstalledStatus());
+        return watcher;
+    });
 
-    skillsWatcher.onDidCreate(() => syncInstalledStatus());
-    skillsWatcher.onDidDelete(() => syncInstalledStatus());
-    claudeSkillsWatcher.onDidCreate(() => syncInstalledStatus());
-    claudeSkillsWatcher.onDidDelete(() => syncInstalledStatus());
+    context.subscriptions.push(...skillWatchers);
 
-    context.subscriptions.push(skillsWatcher, claudeSkillsWatcher);
+    // Watch all scan locations for file changes to refresh duplicate status icons.
+    // Initial watchers are created here; recreated internally on refresh.
+    // The provider itself is registered as a disposable to clean up on deactivation.
+    installedProvider.createFileWatchers();
+    context.subscriptions.push(installedProvider);
 
     // Listen for configuration changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration('agentSkills.skillRepositories')) {
-                marketplaceProvider.refresh();
+                if (marketplaceProvider.shouldHandleConfigChange()) {
+                    // External/manual config change — do a full refresh.
+                    marketplaceProvider.refresh().then(() => {
+                        marketplaceProvider.setInstalledSkills(installedProvider.getInstalledSkillNames());
+                    });
+                }
+            }
+            if (e.affectsConfiguration('chat.agentSkillsLocations')) {
+                // Scan locations changed — full refresh recreates watchers automatically
+                syncInstalledStatus();
             }
         })
     );

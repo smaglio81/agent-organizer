@@ -62,6 +62,29 @@ Click the **info icon** (ℹ️) next to any skill in the marketplace to open a 
    - **Uninstall**: Click the trash icon to remove the skill
    - **Open Folder**: Click the folder icon to view the skill files in VS Code
 
+### Duplicate Detection with Color-Coded Icons
+
+When the same skill is installed in multiple locations, icons indicate their relative status at a glance:
+
+![Color-coded icons](resources/installed-skills-color-coded-icons.png)
+
+- 🟣 Purple — unique skill, only one copy exists
+- 🟢 Green — newest copy among duplicates
+- 🟠 Orange — an older copy, a newer version exists elsewhere
+- 🔵 Blue — all copies are identical
+
+### Installed Skills Right-Click Menu
+
+Right-click any installed skill for quick actions:
+
+![Right-click menu](resources/installed-skills-right-click-menu.png)
+
+- **Move to...** / **Copy to...** — relocate or duplicate a skill across scan locations
+- **Update older skill copies with latest** — sync the newest version to all other locations (green skills only)
+- **Get latest copy of skill** — replace an older copy with the newest version (orange skills only)
+- **Delete** — remove the skill
+- **Show in Marketplace** — reveal and highlight the skill in the Marketplace view
+
 ## Configuration
 
 You can customize the extension behavior through VS Code settings. Press `Ctrl+,` (or `Cmd+,` on Mac) and search for "Agent Skills":
@@ -94,13 +117,7 @@ Add custom repositories by modifying this setting:
 
 **Setting**: `agentSkills.installLocation`
 
-Choose where to install skills in your workspace or home directory:
-- `.github/skills` (default)
-- `.claude/skills`
-- `~/.copilot/skills`
-- `~/.claude/skills`
-
-GitHub Copilot CLI can also use skills installed under the user's home directory ([link](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills#about-agent-skills)).
+Choose where to install skills in your workspace or home directory. Uses location list from `chat.agentSkillsLocations`.
 
 ### GitHub Token
 
@@ -145,6 +162,7 @@ name: My Awesome Skill
 description: A brief description of what this skill does
 license: MIT
 compatibility: Claude 3.5 Sonnet, Claude 3 Opus
+agent-skills-source: <github url of skill, added when skill is installed through the marketplace>
 ---
 
 ## Usage

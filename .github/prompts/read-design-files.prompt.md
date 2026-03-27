@@ -1,0 +1,1 @@
+Read in the design files under folder `.agents/design` to understand the project.

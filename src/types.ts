@@ -40,6 +40,14 @@ export interface Skill {
 }
 
 /**
+ * A repository that failed to load, with the error message preserved for display
+ */
+export interface FailedRepository {
+    repo: SkillRepository;
+    error: string;
+}
+
+/**
  * Installed skill with local path information
  */
 export interface InstalledSkill {
@@ -82,4 +90,46 @@ export interface CacheEntry<T> {
     data: T;
     timestamp: number;
     etag?: string;
+}
+
+/**
+ * Compare two SkillRepository configs for identity equality.
+ * All fields (owner, repo, path, branch, singleSkill) must match.
+ */
+export function isSameRepository(left: SkillRepository, right: SkillRepository): boolean {
+    return left.owner === right.owner &&
+        left.repo === right.repo &&
+        left.path === right.path &&
+        left.branch === right.branch &&
+        left.singleSkill === right.singleSkill;
+}
+
+/**
+ * Normalize path separators to forward slashes so string comparisons
+ * work consistently regardless of OS separator style.
+ */
+export function normalizeSeparators(location: string): string {
+    return location.replace(/\\/g, '/');
+}
+
+/**
+ * Build a GitHub URL for a skill or repository path.
+ */
+export function buildGitHubUrl(owner: string, repo: string, branch: string, skillPath: string): string {
+    const safeBranch = encodeURIComponent(branch);
+    const safePath = skillPath.split('/').map(encodeURIComponent).join('/');
+    return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree/${safeBranch}/${safePath}`;
+}
+
+/**
+ * Normalize a SkillRepository read from user config.
+ * Ensures branch defaults to 'main' when omitted, trims path,
+ * and converts backslashes to forward slashes in path.
+ */
+export function normalizeRepository(repo: SkillRepository): SkillRepository {
+    return {
+        ...repo,
+        branch: repo.branch || 'main',
+        path: normalizeSeparators((repo.path || '').trim())
+    };
 }

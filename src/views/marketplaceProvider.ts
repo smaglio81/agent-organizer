@@ -3,8 +3,27 @@
  */
 
 import * as vscode from 'vscode';
-import { Skill } from '../types';
+import { Skill, FailedRepository, SkillRepository, isSameRepository, normalizeRepository } from '../types';
 import { GitHubSkillsClient } from '../github/skillsClient';
+
+let skillIconUri: vscode.Uri | undefined;
+
+/**
+ * Initialize skill icon from extension resources
+ */
+export function initializeMarketplaceIcons(context: vscode.ExtensionContext): void {
+    if (!context.extensionUri) {
+        return;
+    }
+    skillIconUri = vscode.Uri.joinPath(context.extensionUri, 'resources', 'skills-icon-purple.svg');
+}
+
+/**
+ * Get skill icon URI
+ */
+function getSkillIcon(): vscode.Uri | vscode.ThemeIcon {
+    return skillIconUri || new vscode.ThemeIcon('extensions');
+}
 
 export class SkillTreeItem extends vscode.TreeItem {
     constructor(
@@ -22,7 +41,9 @@ export class SkillTreeItem extends vscode.TreeItem {
         }
         this.tooltip.appendMarkdown(`Source: \`${skill.source.owner}/${skill.source.repo}\``);
         
-        this.iconPath = new vscode.ThemeIcon(isInstalled ? 'check' : 'extensions');
+        this.iconPath = isInstalled
+            ? new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'))
+            : getSkillIcon();
         this.contextValue = 'skill';
         
         // Click to view details
@@ -44,47 +65,142 @@ export class SkillTreeItem extends vscode.TreeItem {
 export class SourceTreeItem extends vscode.TreeItem {
     constructor(
         public readonly sourceName: string,
-        public readonly skills: Skill[]
+        public readonly skills: Skill[],
+        public readonly repo: SkillRepository
     ) {
-        super(sourceName, vscode.TreeItemCollapsibleState.Expanded);
+        super(sourceName, vscode.TreeItemCollapsibleState.Collapsed);
         this.iconPath = new vscode.ThemeIcon('github');
         this.description = `${skills.length} skill${skills.length !== 1 ? 's' : ''}`;
         this.contextValue = 'source';
     }
 }
 
-export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<SkillTreeItem | SourceTreeItem> {
-    private _onDidChangeTreeData = new vscode.EventEmitter<SkillTreeItem | SourceTreeItem | undefined | null | void>();
+/**
+ * Build a concise label for a SkillRepository, including path/branch
+ * when they help distinguish multiple configs of the same repo.
+ */
+function repoLabel(repo: SkillRepository): string {
+    const base = `${repo.owner}/${repo.repo}`;
+    const branchSuffix = repo.branch ? `@${repo.branch}` : '';
+    if (repo.path) {
+        return `${base}${branchSuffix} (${repo.path})`;
+    }
+    return `${base}${branchSuffix}`;
+}
+
+export class FailedSourceTreeItem extends vscode.TreeItem {
+    constructor(public readonly failure: FailedRepository) {
+        super(repoLabel(failure.repo), vscode.TreeItemCollapsibleState.None);
+        this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground'));
+        this.description = 'Failed to load';
+        this.tooltip = new vscode.MarkdownString(`**$(warning) Failed to load**\n\n${failure.error}`);
+        this.tooltip.supportThemeIcons = true;
+        this.contextValue = 'failedSource';
+    }
+}
+
+export class LoadingSourceTreeItem extends vscode.TreeItem {
+    constructor(public readonly repo: SkillRepository) {
+        super(repoLabel(repo), vscode.TreeItemCollapsibleState.None);
+        this.iconPath = new vscode.ThemeIcon('loading~spin');
+        this.description = 'Loading...';
+        this.contextValue = 'sourceLoading';
+    }
+}
+
+export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem> {
+    private _onDidChangeTreeData = new vscode.EventEmitter<SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem | undefined | null | void>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private skills: Skill[] = [];
+    private failures: FailedRepository[] = [];
     private searchQuery: string = '';
     private installedSkillNames: Set<string> = new Set();
     private isLoading: boolean = false;
+    private loadingRepos: SkillRepository[] = [];
+    private loadGeneration: number = 0;
     private groupBySource: boolean = true;
+    private _suppressNextConfigRefresh: boolean = false;
+    /** Cached tree items for getParent / reveal support */
+    private cachedSourceItems: SourceTreeItem[] = [];
+    private cachedSkillItems: Map<string, { item: SkillTreeItem; parent: SourceTreeItem }> = new Map();
+    private treeView?: vscode.TreeView<SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem>;
 
     constructor(
         private readonly githubClient: GitHubSkillsClient,
         private readonly context: vscode.ExtensionContext
-    ) {}
+    ) {
+        initializeMarketplaceIcons(context);
+    }
+
+    /**
+     * Build a stable unique cache key for a skill, including the full
+     * repository identity so different branch/path configs don't collide.
+     */
+    private skillCacheKey(skill: Skill): string {
+        const s = skill.source;
+        return `${s.owner}/${s.repo}/${s.path}@${s.branch || 'main'}/${skill.skillPath}`;
+    }
+
+    /**
+     * Suppress the next config-change-triggered full refresh (used when the
+     * extension itself made the config change and handles the update incrementally).
+     */
+    suppressConfigRefresh(): void {
+        this._suppressNextConfigRefresh = true;
+    }
+
+    /**
+     * Returns true if a config-change refresh should proceed, false if it was
+     * suppressed (clears the flag on the way out).
+     */
+    shouldHandleConfigChange(): boolean {
+        if (this._suppressNextConfigRefresh) {
+            this._suppressNextConfigRefresh = false;
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Incrementally add a single repository — fetches only that repo's skills.
+     */
+    async addRepoToMarketplace(repo: SkillRepository): Promise<void> {
+        this.loadingRepos.push(repo);
+        this._onDidChangeTreeData.fire();
+
+        try {
+            const skills = await this.githubClient.fetchSkillsFromRepo(repo);
+            this.skills.push(...skills);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.failures.push({ repo, error: message });
+        } finally {
+            this.loadingRepos = this.loadingRepos.filter(r => !isSameRepository(r, repo));
+        }
+
+        this._onDidChangeTreeData.fire();
+    }
+
+    /**
+     * Incrementally remove a single repository — no network requests needed.
+     */
+    removeRepoFromMarketplace(repo: SkillRepository): void {
+        // Remove only skills that belong to the exact same repository configuration
+        this.skills = this.skills.filter(s => !isSameRepository(s.source, repo));
+        // Remove only failures for the exact same repository configuration
+        this.failures = this.failures.filter(
+            f => !isSameRepository(f.repo, repo)
+        );
+        this.loadingRepos = this.loadingRepos.filter(r => !isSameRepository(r, repo));
+        this._onDidChangeTreeData.fire();
+    }
 
     /**
      * Refresh the marketplace data
      */
     async refresh(): Promise<void> {
-        this.isLoading = true;
-        this._onDidChangeTreeData.fire();
-        
-        try {
-            this.githubClient.clearCache();
-            this.skills = await this.githubClient.fetchAllSkills();
-        } catch (error) {
-            console.error('Failed to refresh marketplace:', error);
-            vscode.window.showErrorMessage('Failed to refresh marketplace. Please check your network connection.');
-        } finally {
-            this.isLoading = false;
-            this._onDidChangeTreeData.fire();
-        }
+        await this.loadRepositoriesProgressively(true);
     }
 
     /**
@@ -92,18 +208,57 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
      */
     async loadSkills(): Promise<void> {
         if (this.skills.length === 0 && !this.isLoading) {
-            this.isLoading = true;
+            await this.loadRepositoriesProgressively(false);
+        }
+    }
+
+    private async loadRepositoriesProgressively(clearCache: boolean): Promise<void> {
+        const config = vscode.workspace.getConfiguration('agentSkills');
+        const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
+
+        const generation = ++this.loadGeneration;
+
+        if (clearCache) {
+            this.githubClient.clearCache();
+        }
+
+        this.skills = [];
+        this.failures = [];
+        // Clear stale tree-item caches so getParent/reveal don't reference old items
+        this.cachedSourceItems = [];
+        this.cachedSkillItems.clear();
+        this.loadingRepos = [...repositories];
+        this.isLoading = repositories.length > 0;
+        this._onDidChangeTreeData.fire();
+
+        if (repositories.length === 0) {
+            this.isLoading = false;
             this._onDidChangeTreeData.fire();
-            
+            return;
+        }
+
+        await Promise.allSettled(repositories.map(async repo => {
             try {
-                this.skills = await this.githubClient.fetchAllSkills();
+                const repoSkills = await this.githubClient.fetchSkillsFromRepo(repo);
+                if (generation !== this.loadGeneration) {
+                    return;
+                }
+                this.skills.push(...repoSkills);
             } catch (error) {
-                console.error('Failed to load skills:', error);
+                if (generation !== this.loadGeneration) {
+                    return;
+                }
+                const message = error instanceof Error ? error.message : String(error);
+                this.failures.push({ repo, error: message });
             } finally {
-                this.isLoading = false;
+                if (generation !== this.loadGeneration) {
+                    return;
+                }
+                this.loadingRepos = this.loadingRepos.filter(r => !isSameRepository(r, repo));
+                this.isLoading = this.loadingRepos.length > 0;
                 this._onDidChangeTreeData.fire();
             }
-        }
+        }));
     }
 
     /**
@@ -160,20 +315,92 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
         return this.skills.find(s => s.name === name);
     }
 
-    getTreeItem(element: SkillTreeItem | SourceTreeItem): vscode.TreeItem {
+    /**
+     * Store the tree view reference for reveal operations
+     */
+    setTreeView(treeView: vscode.TreeView<SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem>): void {
+        this.treeView = treeView;
+    }
+
+    /**
+     * getParent implementation required for TreeView.reveal() to work.
+     * Returns the SourceTreeItem parent for a SkillTreeItem, or undefined for root items.
+     */
+    getParent(element: SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem): vscode.ProviderResult<SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem> {
+        if (element instanceof SkillTreeItem) {
+            const cached = this.cachedSkillItems.get(this.skillCacheKey(element.skill));
+            if (cached) {
+                return cached.parent;
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Reveal a skill by name in the marketplace tree view.
+     * Clears any active search, finds the parent source group,
+     * expands it, then selects and focuses the matching skill item.
+     */
+    async revealSkillByName(skillName: string): Promise<boolean> {
+        if (!this.treeView) {
+            return false;
+        }
+
+        const skill = this.skills.find(s => s.name === skillName);
+        if (!skill) {
+            vscode.window.showInformationMessage(`"${skillName}" was not found in the Marketplace.`);
+            return false;
+        }
+
+        // Clear search so the full tree is visible
+        if (this.searchQuery) {
+            this.clearSearch();
+        }
+
+        // Rebuild root-level items synchronously to populate cachedSourceItems
+        await Promise.resolve(this.getChildren());
+
+        // Locate the parent source group for the target skill
+        const sourceItem = this.cachedSourceItems.find(s => isSameRepository(s.repo, skill.source));
+        if (sourceItem) {
+            // Force child creation to populate cachedSkillItems without relying on UI timing
+            await Promise.resolve(this.getChildren(sourceItem));
+
+            try {
+                await this.treeView.reveal(sourceItem, { select: false, focus: false, expand: true });
+            } catch {
+                // ignore
+            }
+        }
+
+        // Reveal the cached skill item
+        const cached = this.cachedSkillItems.get(this.skillCacheKey(skill));
+        if (cached) {
+            try {
+                await this.treeView.reveal(cached.item, { select: true, focus: true });
+                return true;
+            } catch {
+                // reveal can fail if the tree hasn't fully rendered
+            }
+        }
+
+        return false;
+    }
+
+    getTreeItem(element: SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem): vscode.TreeItem {
         return element;
     }
 
-    getChildren(element?: SkillTreeItem | SourceTreeItem): vscode.ProviderResult<(SkillTreeItem | SourceTreeItem)[]> {
-        if (this.isLoading) {
-            return [this.createLoadingItem()];
-        }
+    getChildren(element?: SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem): vscode.ProviderResult<(SkillTreeItem | SourceTreeItem | FailedSourceTreeItem | LoadingSourceTreeItem)[]> {
 
         if (!element) {
-            // Root level
+            // Root level — clear stale tree-item caches before rebuilding
+            this.cachedSourceItems = [];
+            this.cachedSkillItems.clear();
+
             const filteredSkills = this.getFilteredSkills();
             
-            if (filteredSkills.length === 0 && this.skills.length === 0) {
+            if (filteredSkills.length === 0 && this.skills.length === 0 && this.failures.length === 0 && this.loadingRepos.length === 0) {
                 return [this.createEmptyItem()];
             }
 
@@ -181,19 +408,40 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
                 return [this.createNoResultsItem()];
             }
 
+            const failureItems = this.searchQuery
+                ? [] // hide failed entries when a search is active
+                : [...this.failures]
+                    .sort((a, b) => `${a.repo.owner}/${a.repo.repo}`.localeCompare(`${b.repo.owner}/${b.repo.repo}`))
+                    .map(f => new FailedSourceTreeItem(f));
+
+            const loadingItems = this.searchQuery
+                ? [] // hide loading entries when a search is active
+                : [...this.loadingRepos]
+                    .sort((a, b) => `${a.owner}/${a.repo}`.localeCompare(`${b.owner}/${b.repo}`))
+                    .map(r => new LoadingSourceTreeItem(r));
+
             if (this.groupBySource) {
-                return this.getSourceGroups(filteredSkills);
+                const sourceGroups = this.getSourceGroups(filteredSkills);
+                this.cachedSourceItems = sourceGroups;
+                return [...sourceGroups, ...failureItems, ...loadingItems];
             } else {
-                return filteredSkills.map(skill => 
-                    new SkillTreeItem(skill, this.installedSkillNames.has(skill.name))
-                );
+                return [
+                    ...filteredSkills.map(skill => new SkillTreeItem(skill, this.installedSkillNames.has(skill.name))),
+                    ...failureItems,
+                    ...loadingItems
+                ];
             }
         }
 
         if (element instanceof SourceTreeItem) {
-            return element.skills.map(skill => 
-                new SkillTreeItem(skill, this.installedSkillNames.has(skill.name))
-            );
+            const items = [...element.skills]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(skill => new SkillTreeItem(skill, this.installedSkillNames.has(skill.name)));
+            // Cache skill items with their parent source for getParent / reveal
+            for (const item of items) {
+                this.cachedSkillItems.set(this.skillCacheKey(item.skill), { item, parent: element });
+            }
+            return items;
         }
 
         return [];
@@ -211,25 +459,70 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Skil
     }
 
     private getSourceGroups(skills: Skill[]): SourceTreeItem[] {
-        const groups = new Map<string, Skill[]>();
+        const groups = new Map<string, { skills: Skill[]; repo: SkillRepository }>();
         
         for (const skill of skills) {
-            const key = `${skill.source.owner}/${skill.source.repo}`;
+            // Include path (and branch if non-default) in the key so the same
+            // repo configured with different paths/branches stays distinct
+            const key = this.repoGroupKey(skill.source);
             if (!groups.has(key)) {
-                groups.set(key, []);
+                groups.set(key, { skills: [], repo: skill.source });
             }
-            groups.get(key)!.push(skill);
+            groups.get(key)!.skills.push(skill);
         }
         
-        return Array.from(groups.entries()).map(
-            ([name, skillList]) => new SourceTreeItem(name, skillList)
-        );
+        return Array.from(groups.entries())
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([_key, { skills: skillList, repo }]) => {
+                const label = this.buildSourceLabel(repo, groups);
+                return new SourceTreeItem(label, skillList, repo);
+            });
     }
 
-    private createLoadingItem(): SkillTreeItem {
-        const item = new vscode.TreeItem('Loading skills...', vscode.TreeItemCollapsibleState.None);
-        item.iconPath = new vscode.ThemeIcon('loading~spin');
-        return item as unknown as SkillTreeItem;
+    /**
+     * Build a stable grouping key for a SkillRepository that includes
+     * owner, repo, path, and branch so distinct configs stay separate.
+     */
+    private repoGroupKey(repo: SkillRepository): string {
+        return `${repo.owner}/${repo.repo}/${repo.path}@${repo.branch || 'main'}`;
+    }
+
+    /**
+     * Build a disambiguated label for a source group.
+     * Uses just owner/repo when unique; appends path and/or branch
+     * only when needed to distinguish from other configs of the same repo.
+     */
+    private buildSourceLabel(
+        repo: SkillRepository,
+        groups: Map<string, { skills: Skill[]; repo: SkillRepository }>
+    ): string {
+        const base = `${repo.owner}/${repo.repo}`;
+
+        // Collect all configs sharing the same owner/repo
+        const siblings: SkillRepository[] = [];
+        for (const [, { repo: r }] of groups) {
+            if (`${r.owner}/${r.repo}` === base) {
+                siblings.push(r);
+            }
+        }
+
+        // Only one config for this repo — plain label
+        if (siblings.length <= 1) {
+            return base;
+        }
+
+        // Check if path alone disambiguates
+        const pathCounts = new Map<string, number>();
+        for (const s of siblings) {
+            pathCounts.set(s.path, (pathCounts.get(s.path) || 0) + 1);
+        }
+
+        if ((pathCounts.get(repo.path) || 0) <= 1) {
+            return `${base} (${repo.path})`;
+        }
+
+        // Path collides — include branch to disambiguate
+        return `${base} (${repo.path} @ ${repo.branch || 'main'})`;
     }
 
     private createEmptyItem(): SkillTreeItem {

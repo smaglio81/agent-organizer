@@ -6,16 +6,16 @@ import * as path from 'path';
 // as well as import your extension to test it
 import * as vscode from 'vscode';
 import { InstalledSkillsTreeDataProvider } from '../views/installedProvider';
+import { MarketplaceTreeDataProvider } from '../views/marketplaceProvider';
+import { SkillInstallationService } from '../services/installationService';
 import { SkillPathService } from '../services/skillPathService';
+import { Skill, SkillRepository, InstalledSkill } from '../types';
+import { GitHubSkillsClient } from '../github/skillsClient';
+import { parseGitHubUrl } from '../extension';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
-
-	test('Sample test', () => {
-		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
-	});
 
 	suite('SkillPathService.resolveInstallTarget path traversal validation', () => {
 		class TestSkillPathService extends SkillPathService {
@@ -206,7 +206,15 @@ suite('Extension Test Suite', () => {
 		}
 
 		const pathService = new TestSkillPathService();
-		const provider = new InstalledSkillsTreeDataProvider({} as vscode.ExtensionContext, pathService);
+		const mockContext = {
+			workspaceState: {
+				get: () => [],
+				update: async () => undefined,
+				keys: () => []
+			},
+			subscriptions: []
+		} as unknown as vscode.ExtensionContext;
+		const provider = new InstalledSkillsTreeDataProvider(mockContext, pathService);
 		const skills = await provider.scanInstalledSkills();
 
 		assert.strictEqual(missingDirReadAttempts, 0, 'Missing directories should be skipped before readDirectory');
@@ -217,5 +225,331 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(skills.length, 1);
 		assert.strictEqual(skills[0].name, 'Copilot Skill');
 		assert.strictEqual(skills[0].location, '~/.copilot/skills/my-skill');
+	});
+
+	suite('Installed Skills - Copy To / Move To', () => {
+		// Helper: create a real temp skill directory with a SKILL.md
+		async function createTempSkill(baseDir: string, skillName: string): Promise<void> {
+			const skillDir = vscode.Uri.file(path.join(baseDir, skillName));
+			await vscode.workspace.fs.createDirectory(skillDir);
+			const skillMd = vscode.Uri.joinPath(skillDir, 'SKILL.md');
+			await vscode.workspace.fs.writeFile(skillMd, new TextEncoder().encode(
+				`---\nname: ${skillName}\ndescription: Test skill\n---\nBody content\n`
+			));
+		}
+
+		test('copySkill copies to target location and keeps source', async () => {
+			const tmpBase = path.join(os.tmpdir(), `agent-skills-copy-test-${Date.now()}`);
+			const sourceBase = path.join(tmpBase, 'source-skills');
+			const targetBase = path.join(tmpBase, 'target-skills');
+
+			await createTempSkill(sourceBase, 'my-skill');
+			// Create target base dir
+			await vscode.workspace.fs.createDirectory(vscode.Uri.file(targetBase));
+
+			class TestPathService extends SkillPathService {
+				override getScanLocations(): string[] { return [sourceBase, targetBase]; }
+				override getHomeDirectory(): string { return os.tmpdir(); }
+				override isHomeLocation(_location: string): boolean { return false; }
+				override requiresWorkspaceFolder(_location: string): boolean { return false; }
+				override getWorkspaceFolderForLocation(_location: string): vscode.WorkspaceFolder | undefined { return undefined; }
+				override resolveLocationToUri(location: string): vscode.Uri | undefined {
+					return vscode.Uri.file(location);
+				}
+			}
+
+			const service = new SkillInstallationService(
+				{} as GitHubSkillsClient, {} as vscode.ExtensionContext, new TestPathService()
+			);
+
+			const skill: InstalledSkill = {
+				name: 'my-skill', description: 'Test',
+				location: `${sourceBase}/my-skill`, installedAt: new Date().toISOString()
+			};
+
+			const orig = vscode.window.showQuickPick;
+			(vscode.window as any).showQuickPick = async (items: any[]) =>
+				items.find((i: any) => i.label === targetBase);
+
+			try {
+				const result = await service.copySkill(skill);
+				assert.strictEqual(result, true, 'copySkill should succeed');
+
+				// Target should exist
+				const targetSkillMd = vscode.Uri.file(path.join(targetBase, 'my-skill', 'SKILL.md'));
+				const stat = await vscode.workspace.fs.stat(targetSkillMd);
+				assert.ok(stat, 'Copied SKILL.md should exist at target');
+
+				// Source should still exist
+				const sourceSkillMd = vscode.Uri.file(path.join(sourceBase, 'my-skill', 'SKILL.md'));
+				const srcStat = await vscode.workspace.fs.stat(sourceSkillMd);
+				assert.ok(srcStat, 'Source SKILL.md should still exist after copy');
+			} finally {
+				(vscode.window as any).showQuickPick = orig;
+				await vscode.workspace.fs.delete(vscode.Uri.file(tmpBase), { recursive: true });
+			}
+		});
+
+		test('moveSkill copies to target and deletes source', async () => {
+			const tmpBase = path.join(os.tmpdir(), `agent-skills-move-test-${Date.now()}`);
+			const sourceBase = path.join(tmpBase, 'source-skills');
+			const targetBase = path.join(tmpBase, 'target-skills');
+
+			await createTempSkill(sourceBase, 'my-skill');
+			await vscode.workspace.fs.createDirectory(vscode.Uri.file(targetBase));
+
+			class TestPathService extends SkillPathService {
+				override getScanLocations(): string[] { return [sourceBase, targetBase]; }
+				override getHomeDirectory(): string { return os.tmpdir(); }
+				override isHomeLocation(_location: string): boolean { return false; }
+				override requiresWorkspaceFolder(_location: string): boolean { return false; }
+				override getWorkspaceFolderForLocation(_location: string): vscode.WorkspaceFolder | undefined { return undefined; }
+				override resolveLocationToUri(location: string): vscode.Uri | undefined {
+					return vscode.Uri.file(location);
+				}
+			}
+
+			const service = new SkillInstallationService(
+				{} as GitHubSkillsClient, {} as vscode.ExtensionContext, new TestPathService()
+			);
+
+			const skill: InstalledSkill = {
+				name: 'my-skill', description: 'Test',
+				location: `${sourceBase}/my-skill`, installedAt: new Date().toISOString()
+			};
+
+			const orig = vscode.window.showQuickPick;
+			(vscode.window as any).showQuickPick = async (items: any[]) =>
+				items.find((i: any) => i.label === targetBase);
+
+			try {
+				const result = await service.moveSkill(skill);
+				assert.strictEqual(result, true, 'moveSkill should succeed');
+
+				// Target should exist
+				const targetSkillMd = vscode.Uri.file(path.join(targetBase, 'my-skill', 'SKILL.md'));
+				const stat = await vscode.workspace.fs.stat(targetSkillMd);
+				assert.ok(stat, 'Moved SKILL.md should exist at target');
+
+				// Source should be gone
+				let sourceExists = true;
+				try {
+					await vscode.workspace.fs.stat(vscode.Uri.file(path.join(sourceBase, 'my-skill')));
+				} catch {
+					sourceExists = false;
+				}
+				assert.strictEqual(sourceExists, false, 'Source should be deleted after move');
+			} finally {
+				(vscode.window as any).showQuickPick = orig;
+				await vscode.workspace.fs.delete(vscode.Uri.file(tmpBase), { recursive: true });
+			}
+		});
+	});
+
+	suite('Marketplace - Add / Remove Repository', () => {
+		const testRepo: SkillRepository = {
+			owner: 'test-owner',
+			repo: 'test-repo',
+			path: 'skills',
+			branch: 'main'
+		};
+
+		const testSkill: Skill = {
+			name: 'test-skill',
+			description: 'A test skill',
+			source: testRepo,
+			skillPath: 'skills/test-skill'
+		};
+
+		test('addRepoToMarketplace adds skills from the repository', async () => {
+			// Create a mock GitHubSkillsClient that returns a known skill
+			const mockClient = {
+				fetchSkillsFromRepo: async () => [testSkill],
+				clearCache: () => {}
+			} as unknown as GitHubSkillsClient;
+
+			const mockContext = {
+				extensionUri: undefined
+			} as unknown as vscode.ExtensionContext;
+
+			const provider = new MarketplaceTreeDataProvider(mockClient, mockContext);
+
+			assert.strictEqual(provider.getSkills().length, 0, 'Should start with no skills');
+
+			await provider.addRepoToMarketplace(testRepo);
+
+			assert.strictEqual(provider.getSkills().length, 1, 'Should have one skill after add');
+			assert.strictEqual(provider.getSkills()[0].name, 'test-skill');
+		});
+
+		test('removeRepoFromMarketplace removes only skills from that repository', async () => {
+			const otherRepo: SkillRepository = {
+				owner: 'other-owner',
+				repo: 'other-repo',
+				path: 'skills',
+				branch: 'main'
+			};
+
+			const otherSkill: Skill = {
+				name: 'other-skill',
+				description: 'Another skill',
+				source: otherRepo,
+				skillPath: 'skills/other-skill'
+			};
+
+			// Add skills from two repos, then remove one
+			const mockClient = {
+				fetchSkillsFromRepo: async (repo: SkillRepository) => {
+					if (repo.owner === 'test-owner') { return [testSkill]; }
+					return [otherSkill];
+				},
+				clearCache: () => {}
+			} as unknown as GitHubSkillsClient;
+
+			const mockContext = {
+				extensionUri: undefined
+			} as unknown as vscode.ExtensionContext;
+
+			const provider = new MarketplaceTreeDataProvider(mockClient, mockContext);
+
+			await provider.addRepoToMarketplace(testRepo);
+			await provider.addRepoToMarketplace(otherRepo);
+			assert.strictEqual(provider.getSkills().length, 2, 'Should have two skills');
+
+			provider.removeRepoFromMarketplace(testRepo);
+
+			assert.strictEqual(provider.getSkills().length, 1, 'Should have one skill after remove');
+			assert.strictEqual(provider.getSkills()[0].name, 'other-skill', 'Remaining skill should be from other repo');
+		});
+	});
+
+	suite('Skill File and Folder Operations', () => {
+		test('add and delete a file inside a skill folder', async () => {
+			const tmpBase = path.join(os.tmpdir(), `agent-skills-file-test-${Date.now()}`);
+			const skillDir = vscode.Uri.file(path.join(tmpBase, 'my-skill'));
+			await vscode.workspace.fs.createDirectory(skillDir);
+
+			try {
+				// Add file
+				const fileUri = vscode.Uri.joinPath(skillDir, 'notes.txt');
+				await vscode.workspace.fs.writeFile(fileUri, new Uint8Array());
+				const stat = await vscode.workspace.fs.stat(fileUri);
+				assert.ok(stat, 'Created file should exist');
+
+				// Delete file
+				await vscode.workspace.fs.delete(fileUri);
+				let exists = true;
+				try { await vscode.workspace.fs.stat(fileUri); } catch { exists = false; }
+				assert.strictEqual(exists, false, 'Deleted file should not exist');
+			} finally {
+				await vscode.workspace.fs.delete(vscode.Uri.file(tmpBase), { recursive: true });
+			}
+		});
+
+		test('add and delete a folder inside a skill folder', async () => {
+			const tmpBase = path.join(os.tmpdir(), `agent-skills-folder-test-${Date.now()}`);
+			const skillDir = vscode.Uri.file(path.join(tmpBase, 'my-skill'));
+			await vscode.workspace.fs.createDirectory(skillDir);
+
+			try {
+				// Add folder
+				const folderUri = vscode.Uri.joinPath(skillDir, 'sub-folder');
+				await vscode.workspace.fs.createDirectory(folderUri);
+				const stat = await vscode.workspace.fs.stat(folderUri);
+				assert.strictEqual(stat.type & vscode.FileType.Directory, vscode.FileType.Directory, 'Created folder should be a directory');
+
+				// Delete folder
+				await vscode.workspace.fs.delete(folderUri, { recursive: true });
+				let exists = true;
+				try { await vscode.workspace.fs.stat(folderUri); } catch { exists = false; }
+				assert.strictEqual(exists, false, 'Deleted folder should not exist');
+			} finally {
+				await vscode.workspace.fs.delete(vscode.Uri.file(tmpBase), { recursive: true });
+			}
+		});
+	});
+
+	suite('parseGitHubUrl', () => {
+		// --- Valid URLs ---
+
+		test('parses bare owner/repo URL', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('parses owner/repo with trailing slash', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo/');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('strips .git suffix from repo name', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo.git');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('parses /tree/branch URL', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo/tree/main');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: 'main', path: undefined });
+		});
+
+		test('parses /tree/branch/path URL', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo/tree/main/skills');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: 'main', path: 'skills' });
+		});
+
+		test('parses /tree/branch with deep path', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo/tree/develop/path/to/skills');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: 'develop', path: 'path/to/skills' });
+		});
+
+		test('strips query string and fragment', () => {
+			const result = parseGitHubUrl('https://github.com/owner/repo?tab=readme#section');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('handles http:// protocol', () => {
+			const result = parseGitHubUrl('http://github.com/owner/repo');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('handles www. prefix', () => {
+			const result = parseGitHubUrl('https://www.github.com/owner/repo');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		test('trims whitespace', () => {
+			const result = parseGitHubUrl('  https://github.com/owner/repo  ');
+			assert.deepStrictEqual(result, { owner: 'owner', repo: 'repo', branch: undefined, path: undefined });
+		});
+
+		// --- Invalid URLs ---
+
+		test('rejects non-GitHub host', () => {
+			assert.strictEqual(parseGitHubUrl('https://gitlab.com/owner/repo'), undefined);
+		});
+
+		test('rejects URL with only owner (no repo)', () => {
+			assert.strictEqual(parseGitHubUrl('https://github.com/owner'), undefined);
+		});
+
+		test('rejects /blob/ URLs', () => {
+			assert.strictEqual(parseGitHubUrl('https://github.com/owner/repo/blob/main/README.md'), undefined);
+		});
+
+		test('rejects /issues/ URLs', () => {
+			assert.strictEqual(parseGitHubUrl('https://github.com/owner/repo/issues/123'), undefined);
+		});
+
+		test('rejects /tree/ without branch segment', () => {
+			assert.strictEqual(parseGitHubUrl('https://github.com/owner/repo/tree'), undefined);
+		});
+
+		test('rejects empty string', () => {
+			assert.strictEqual(parseGitHubUrl(''), undefined);
+		});
+
+		test('rejects random non-URL string', () => {
+			assert.strictEqual(parseGitHubUrl('not a url at all'), undefined);
+		});
 	});
 });

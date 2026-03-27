@@ -9,7 +9,7 @@
  */
 
 import * as vscode from 'vscode';
-import { Skill, SkillRepository, SkillMetadata, CacheEntry } from '../types';
+import { Skill, SkillRepository, SkillMetadata, CacheEntry, FailedRepository, normalizeRepository } from '../types';
 
 /**
  * GitHub Git Tree item from Trees API
@@ -46,12 +46,12 @@ export class GitHubSkillsClient {
      * API calls: 1 per repository (using Git Trees API)
      * File content: Fetched via raw.githubusercontent.com (no API limit)
      */
-    async fetchAllSkills(): Promise<Skill[]> {
+    async fetchAllSkills(): Promise<{ skills: Skill[]; failures: FailedRepository[] }> {
         const config = vscode.workspace.getConfiguration('agentSkills');
-        const repositories = config.get<SkillRepository[]>('skillRepositories', []);
+        const repositories = config.get<SkillRepository[]>('skillRepositories', []).map(normalizeRepository);
         
         const allSkills: Skill[] = [];
-        const errors: string[] = [];
+        const failures: FailedRepository[] = [];
 
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Window,
@@ -71,19 +71,14 @@ export class GitHubSkillsClient {
                     allSkills.push(...result.value);
                 } else {
                     const repo = repositories[i];
-                    errors.push(`${repo.owner}/${repo.repo}: ${result.reason}`);
+                    const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
                     console.error(`Failed to fetch skills from ${repo.owner}/${repo.repo}:`, result.reason);
+                    failures.push({ repo, error: message });
                 }
             }
         });
 
-        if (errors.length > 0 && allSkills.length === 0) {
-            vscode.window.showWarningMessage(
-                `Failed to fetch some skills: ${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} more)` : ''}`
-            );
-        }
-
-        return allSkills;
+        return { skills: allSkills, failures };
     }
 
     /**
@@ -97,7 +92,8 @@ export class GitHubSkillsClient {
         }
 
         // Use Git Trees API to get entire directory structure in ONE call
-        const tree = await this.fetchRepoTree(repo.owner, repo.repo, repo.branch);
+        const branch = repo.branch || 'main';
+        const tree = await this.fetchRepoTree(repo.owner, repo.repo, branch);
         
         // Find all SKILL.md files under the configured path
         const skillMdFiles = tree.tree.filter(item => 
@@ -185,7 +181,7 @@ export class GitHubSkillsClient {
         const skillMdPath = `${skillPath}/SKILL.md`;
         
         try {
-            const content = await this.fetchRawContent(repo.owner, repo.repo, skillMdPath, repo.branch);
+            const content = await this.fetchRawContent(repo.owner, repo.repo, skillMdPath, repo.branch || 'main');
             const parsed = this.parseSkillMd(content);
             
             return {
@@ -412,6 +408,27 @@ export class GitHubSkillsClient {
             data,
             timestamp: Date.now()
         });
+    }
+
+    /**
+     * Fetch the default branch for a repository from the GitHub API.
+     */
+    async fetchDefaultBranch(owner: string, repo: string): Promise<string> {
+        const cacheKey = `default-branch:${owner}/${repo}`;
+        const cached = this.getFromCache<string>(cacheKey);
+        if (cached) {
+            return cached;
+        }
+
+        const url = `${GitHubSkillsClient.BASE_URL}/repos/${owner}/${repo}`;
+        const response = await this.fetchWithAuth(url);
+        if (!response.ok) {
+            return 'main'; // safe fallback
+        }
+
+        const data = await response.json() as { default_branch: string };
+        this.setCache(cacheKey, data.default_branch);
+        return data.default_branch;
     }
 
     /**
