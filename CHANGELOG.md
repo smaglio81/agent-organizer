@@ -127,6 +127,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `compareFiles` in `duplicateService.ts` — added comment explaining equal-mtime behavior is intentional when content comparison isn't available.
 - `version` bumped to `0.0.5` in `package.json`.
 - `uninstall:vsix` script updated from old `formulahendry` publisher to `smaglio81`.
+- Area views now scan locations from their own per-area `chat.*` setting (e.g. `chat.agentFilesLocations` for agents, `chat.pluginLocations` for plugins) instead of deriving all scan paths from `chat.agentSkillsLocations`. Falls back to the same generated default list when the setting isn't configured.
+- README.md rewritten with concise user-facing content. Detailed guides moved to `docs/` folder (marketplace, installed items, plugins, configuration).
 
 ## [0.0.4]
 

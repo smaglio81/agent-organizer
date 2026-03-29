@@ -28,7 +28,7 @@ The extension adds an **Agent Organizer** activity bar container with 8 tree vie
 
 Each area's list of possible download locations is resolved from its `chat.*` configuration key (e.g., `chat.agentFilesLocations` for agents, `chat.pluginLocations` for plugins, `chat.agentSkillsLocations` for skills). If the config key is not set, a default list is generated from 6 template prefixes (`{.agents,.claude,.github,~/.agents,~/.claude,~/.copilot}/{area}`). Hooks - Kiro is fixed to `.kiro/hooks`.
 
-Related external setting: `chat.agentSkillsLocations` provides the base location list for skills. Each area view derives its scan paths by replacing the last segment (e.g., `~/.claude/skills` → `~/.claude/agents`), and also includes the area's configured default download location from `agentOrganizer.installLocations`.
+Related external settings: each area view scans locations from its own `chat.*` setting (e.g. `chat.agentFilesLocations` for agents, `chat.pluginLocations` for plugins). When the setting isn't configured, a default list is generated from the template prefixes. The configured download location from `agentOrganizer.installLocations` is always included in the scan.
 
 ---
 
@@ -55,8 +55,8 @@ Each area has a unique icon design and color. Hooks - GitHub and Hooks - Kiro sh
 
 Each content area (except Skills, which has its own dedicated provider) uses the generic `InstalledAreaTreeDataProvider` (`src/views/installedAreaProvider.ts`). This provider:
 
-- Scans all `chat.agentSkillsLocations` paths, replacing the last segment with the area's conventional directory name
-- Also scans the area's configured default download location from `agentOrganizer.installLocations`
+- Scans locations from the area's own `chat.*` setting (e.g. `chat.agentFilesLocations` for agents), falling back to generated defaults
+- Also includes the area's configured default download location from `agentOrganizer.installLocations`
 - Groups items by install location under `AreaLocationTreeItem` nodes with colored folder icons
 - Multi-file items (`AreaInstalledItemTreeItem`) expand to show folder contents
 - Multi-file items use recursive definition file search (e.g., `plugin.json` may be nested within the item folder)

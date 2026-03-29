@@ -111,7 +111,7 @@ Currently, Skills has a view.
   * plugins -> `chat.pluginLocations`
   * prompts -> `chat.promptFilesLocations`
   * skills -> `chat.agentSkillsLocations`
-* The Default List should start created from
+* The Default List should be created from
   * These templated locations:
     * .agents/{area}
     * .claude/{area}

@@ -52,7 +52,11 @@ export class AreaInstalledItemTreeItem extends vscode.TreeItem {
         super(installedItem.name, isSingleFile ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed);
         this.description = installedItem.description;
         this.iconPath = getAreaItemIcon(area, status);
-        this.contextValue = isSingleFile ? 'areaInstalledFile' : 'areaInstalledFolder';
+        // Encode duplicate status into contextValue so menu visibility can key off it
+        const base = isSingleFile ? 'areaInstalledFile' : 'areaInstalledFolder';
+        this.contextValue = status === 'newest' ? `${base}_newest`
+            : status === 'older' ? `${base}_older`
+            : base;
 
         // Single-file items open in editor on click
         if (isSingleFile) {
@@ -110,6 +114,14 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
     private cacheReady = false;
     /** Duplicate status per item location */
     private duplicateStatusMap = new Map<string, DuplicateStatus>();
+    /** Persisted collapsed state for location groups */
+    private collapsedLocations: Set<string>;
+    private readonly collapsedStateKey: string;
+    /** Cached location tree items for getParent/reveal support */
+    private locationItems = new Map<string, AreaLocationTreeItem>();
+    /** Debounce timer for file change events */
+    private debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    private pendingRefresh = false;
 
     constructor(
         private readonly context: vscode.ExtensionContext,
@@ -117,6 +129,10 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
         private readonly area: ContentArea,
         private readonly viewId: string
     ) {
+        this.collapsedStateKey = `${viewId}.collapsedLocations`;
+        this.collapsedLocations = new Set(
+            this.context.workspaceState.get<string[]>(this.collapsedStateKey, [])
+        );
         this.createFileWatchers();
     }
 
@@ -188,9 +204,30 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
 
     setTreeView(treeView: vscode.TreeView<TreeNode>): void {
         this.treeView = treeView;
+        treeView.onDidCollapseElement(e => {
+            if (e.element instanceof AreaLocationTreeItem) {
+                this.collapsedLocations.add(e.element.location);
+                this.saveCollapsedState();
+            }
+        });
+        treeView.onDidExpandElement(e => {
+            if (e.element instanceof AreaLocationTreeItem) {
+                this.collapsedLocations.delete(e.element.location);
+                this.saveCollapsedState();
+            }
+        });
+    }
+
+    private async saveCollapsedState(): Promise<void> {
+        await this.context.workspaceState.update(
+            this.collapsedStateKey,
+            Array.from(this.collapsedLocations)
+        );
     }
 
     async expandAll(): Promise<void> {
+        this.collapsedLocations.clear();
+        await this.saveCollapsedState();
         if (!this.treeView) { return; }
         const root = await this.getChildren();
         if (!root) { return; }
@@ -201,6 +238,15 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
                 } catch { /* ignore */ }
             }
         }
+    }
+
+    async collapseAll(): Promise<void> {
+        const groups = this.groupByLocation();
+        for (const location of Object.keys(groups)) {
+            this.collapsedLocations.add(location);
+        }
+        await this.saveCollapsedState();
+        this._onDidChangeTreeData.fire();
     }
 
     getInstalledItemNames(): Set<string> {
@@ -216,6 +262,15 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
      */
     getDuplicateStatus(location: string): DuplicateStatus {
         return this.duplicateStatusMap.get(location) || 'unique';
+    }
+
+    /**
+     * Find the newest copy of an item by name (status === 'newest').
+     */
+    findNewestCopy(itemName: string): InstalledSkill | undefined {
+        return this.installedItems.find(
+            i => i.name === itemName && this.duplicateStatusMap.get(i.location) === 'newest'
+        );
     }
 
     setSearchQuery(query: string): void {
@@ -292,21 +347,13 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
 
     async scanInstalledItems(): Promise<InstalledSkill[]> {
         const def = AREA_DEFINITIONS[this.area];
-        const locations = this.pathService.getScanLocations();
         const fs = this.pathService.getFileSystem();
         const items: InstalledSkill[] = [];
-        const conventionalDir = def.conventionalDir || this.area;
 
-        // Build the set of area-specific locations to scan by deriving from skill scan locations
-        const areaLocationsSet = new Set<string>();
-        for (const rawLocation of locations) {
-            const location = normalizeSeparators(rawLocation);
-            const lastSlash = location.lastIndexOf('/');
-            const areaLocation = lastSlash > 0
-                ? location.substring(0, lastSlash) + '/' + conventionalDir
-                : conventionalDir;
-            areaLocationsSet.add(areaLocation);
-        }
+        // Get scan locations from the area's own chat.* setting (or generated defaults)
+        const areaLocationsSet = new Set<string>(
+            this.pathService.getDefaultDownloadLocations(this.area).map(normalizeSeparators)
+        );
 
         // Also include the configured default download location for this area
         const defaultDownload = normalizeSeparators(this.pathService.getDefaultDownloadLocation(this.area));
@@ -436,11 +483,23 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
 
     // --- Tree data provider ---
 
-    getTreeItem(element: TreeNode): vscode.TreeItem { return element; }
+    getTreeItem(element: TreeNode): vscode.TreeItem {
+        if (element instanceof AreaLocationTreeItem) {
+            element.collapsibleState = this.collapsedLocations.has(element.location)
+                ? vscode.TreeItemCollapsibleState.Collapsed
+                : vscode.TreeItemCollapsibleState.Expanded;
+        }
+        return element;
+    }
 
     getParent(element: TreeNode): vscode.ProviderResult<TreeNode> {
         if (element instanceof AreaItemFileTreeItem) { return element.parentFolder; }
         if (element instanceof AreaItemFolderTreeItem) { return element.parentItem; }
+        if (element instanceof AreaInstalledItemTreeItem) {
+            const loc = element.installedItem.location;
+            const parentLoc = loc.includes('/') ? loc.substring(0, loc.lastIndexOf('/')) : loc;
+            return this.locationItems.get(parentLoc);
+        }
         return undefined;
     }
 
@@ -501,9 +560,17 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
         if (filtered.length === 0) { return []; }
 
         const groups = this.groupByLocation(filtered);
-        return Object.entries(groups).map(([location, items]) =>
-            new AreaLocationTreeItem(location, items)
-        );
+        const nextLocationItems = new Map<string, AreaLocationTreeItem>();
+        const result = Object.entries(groups).map(([location, items]) => {
+            const collapsibleState = this.collapsedLocations.has(location)
+                ? vscode.TreeItemCollapsibleState.Collapsed
+                : vscode.TreeItemCollapsibleState.Expanded;
+            const item = new AreaLocationTreeItem(location, items, collapsibleState);
+            nextLocationItems.set(location, item);
+            return item;
+        });
+        this.locationItems = nextLocationItems;
+        return result;
     }
 
     private async listFolderContents(folderUri: vscode.Uri, parent: AreaInstalledItemTreeItem | AreaItemFolderTreeItem): Promise<TreeNode[]> {
@@ -533,16 +600,11 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
 
     createFileWatchers(): void {
         const def = AREA_DEFINITIONS[this.area];
-        const conventionalDir = def.conventionalDir || this.area;
-        const locations = this.pathService.getScanLocations();
 
-        // Build deduplicated set of area-specific locations to watch
-        const areaLocsSet = new Set<string>();
-        for (const loc of locations) {
-            const segments = loc.split('/');
-            segments[segments.length - 1] = conventionalDir;
-            areaLocsSet.add(normalizeSeparators(segments.join('/')));
-        }
+        // Use the area's own scan locations (from chat.* setting or generated defaults)
+        const areaLocsSet = new Set<string>(
+            this.pathService.getDefaultDownloadLocations(this.area).map(normalizeSeparators)
+        );
         const defaultDownload = normalizeSeparators(this.pathService.getDefaultDownloadLocation(this.area));
         areaLocsSet.add(defaultDownload);
 
@@ -556,9 +618,23 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
 
         const watchers = createLocationWatchers(
             [...areaLocsSet], this.pathService, filePattern,
-            () => this.refresh()
+            () => this.onFileChanged()
         );
         this.activeWatchers.push(...watchers);
+    }
+
+    /**
+     * Debounced file change handler — waits 500ms for rapid successive changes.
+     */
+    private onFileChanged(): void {
+        this.pendingRefresh = true;
+        if (this.debounceTimer) { clearTimeout(this.debounceTimer); }
+        this.debounceTimer = setTimeout(async () => {
+            if (this.pendingRefresh) {
+                this.pendingRefresh = false;
+                await this.refresh();
+            }
+        }, 500);
     }
 
     private recreateFileWatchers(): void {
@@ -570,6 +646,7 @@ export class InstalledAreaTreeDataProvider implements vscode.TreeDataProvider<Tr
     dispose(): void {
         for (const w of this.activeWatchers) { w.dispose(); }
         this.activeWatchers = [];
+        if (this.debounceTimer) { clearTimeout(this.debounceTimer); }
         this._onDidChangeTreeData.dispose();
     }
 }

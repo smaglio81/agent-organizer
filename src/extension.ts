@@ -492,6 +492,16 @@ export function activate(context: vscode.ExtensionContext) {
             ];
         }),
 
+        // Per-area sync and get-latest commands (delegate to the shared syncSkill/getLatestSkill handlers)
+        ...(['Agent', 'Hook', 'Instruction', 'Plugin', 'Prompt'] as const).flatMap(suffix => [
+            vscode.commands.registerCommand(`agentOrganizer.sync${suffix}`, (item: AreaInstalledItemTreeItem) => {
+                vscode.commands.executeCommand('agentOrganizer.syncSkill', item);
+            }),
+            vscode.commands.registerCommand(`agentOrganizer.getLatest${suffix}`, (item: AreaInstalledItemTreeItem) => {
+                vscode.commands.executeCommand('agentOrganizer.getLatestSkill', item);
+            }),
+        ]),
+
         // View skill details - opens in editor area as WebviewPanel
         vscode.commands.registerCommand('agentOrganizer.viewDetails', (item: SkillTreeItem | Skill | unknown) => {
             if (!item) {
@@ -1183,9 +1193,40 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }),
 
-        // Update older copies of a skill from the newest version
-        vscode.commands.registerCommand('agentOrganizer.syncSkill', async (item: InstalledSkillTreeItem) => {
-            if (item?.installedSkill) {
+        // Update older copies of an item from the newest version
+        vscode.commands.registerCommand('agentOrganizer.syncSkill', async (item: InstalledSkillTreeItem | AreaInstalledItemTreeItem) => {
+            if (item instanceof AreaInstalledItemTreeItem) {
+                // Area item sync: copy this (newest) item to all other locations with the same name
+                const viewId = areaViewIds.find(a => a.area === item.area)?.viewId;
+                const provider = viewId ? areaProviders.get(viewId) : undefined;
+                if (!provider) { return; }
+                const allItems = provider.getInstalledItems();
+                const duplicates = allItems.filter(
+                    i => i.name === item.installedItem.name && i.location !== item.installedItem.location
+                );
+                if (duplicates.length === 0) {
+                    vscode.window.showInformationMessage(`No other copies of "${item.installedItem.name}" to synchronize.`);
+                    return;
+                }
+                let synced = 0;
+                for (const target of duplicates) {
+                    const targetLoc = normalizeSeparators(target.location);
+                    const targetWf = pathService.getWorkspaceFolderForLocation(targetLoc);
+                    const targetUri = pathService.resolveLocationToUri(targetLoc, targetWf);
+                    if (!targetUri) { continue; }
+                    try {
+                        await vscode.workspace.fs.delete(targetUri, { recursive: true, useTrash: true });
+                        await vscode.workspace.fs.copy(item.itemUri, targetUri, { overwrite: true });
+                        synced++;
+                    } catch { /* skip */ }
+                }
+                if (synced > 0) {
+                    vscode.window.showInformationMessage(
+                        `Synchronized "${item.installedItem.name}" to ${synced} location${synced !== 1 ? 's' : ''}.`
+                    );
+                }
+                await syncInstalledStatus();
+            } else if (item?.installedSkill) {
                 const success = await installationService.syncSkill(
                     item.installedSkill,
                     installedProvider.getInstalledSkills()
@@ -1196,9 +1237,29 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }),
 
-        // Get latest version of a skill from the newest copy
-        vscode.commands.registerCommand('agentOrganizer.getLatestSkill', async (item: InstalledSkillTreeItem) => {
-            if (item?.installedSkill) {
+        // Get latest version of an item from the newest copy
+        vscode.commands.registerCommand('agentOrganizer.getLatestSkill', async (item: InstalledSkillTreeItem | AreaInstalledItemTreeItem) => {
+            if (item instanceof AreaInstalledItemTreeItem) {
+                // Area item get-latest: replace this (older) copy with the newest
+                const viewId = areaViewIds.find(a => a.area === item.area)?.viewId;
+                const provider = viewId ? areaProviders.get(viewId) : undefined;
+                if (!provider) { return; }
+                const newest = provider.findNewestCopy(item.installedItem.name);
+                if (!newest) { return; }
+                const newestLoc = normalizeSeparators(newest.location);
+                const newestWf = pathService.getWorkspaceFolderForLocation(newestLoc);
+                const newestUri = pathService.resolveLocationToUri(newestLoc, newestWf);
+                if (!newestUri) { return; }
+                try {
+                    await vscode.workspace.fs.delete(item.itemUri, { recursive: true, useTrash: true });
+                    await vscode.workspace.fs.copy(newestUri, item.itemUri, { overwrite: true });
+                    vscode.window.showInformationMessage(`Updated "${item.installedItem.name}" from latest copy.`);
+                    await syncInstalledStatus();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    vscode.window.showErrorMessage(`Failed to get latest: ${message}`);
+                }
+            } else if (item?.installedSkill) {
                 const newest = installedProvider.findNewestCopy(item.installedSkill.name);
                 if (newest) {
                     const success = await installationService.getLatestSkillFrom(item.installedSkill, newest);

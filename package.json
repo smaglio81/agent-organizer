@@ -251,6 +251,46 @@
         "title": "Get latest copy of skill"
       },
       {
+        "command": "agentOrganizer.syncAgent",
+        "title": "Update older agent copies with latest"
+      },
+      {
+        "command": "agentOrganizer.getLatestAgent",
+        "title": "Get latest copy of agent"
+      },
+      {
+        "command": "agentOrganizer.syncHook",
+        "title": "Update older hook copies with latest"
+      },
+      {
+        "command": "agentOrganizer.getLatestHook",
+        "title": "Get latest copy of hook"
+      },
+      {
+        "command": "agentOrganizer.syncInstruction",
+        "title": "Update older instruction copies with latest"
+      },
+      {
+        "command": "agentOrganizer.getLatestInstruction",
+        "title": "Get latest copy of instruction"
+      },
+      {
+        "command": "agentOrganizer.syncPlugin",
+        "title": "Update older plugin copies with latest"
+      },
+      {
+        "command": "agentOrganizer.getLatestPlugin",
+        "title": "Get latest copy of plugin"
+      },
+      {
+        "command": "agentOrganizer.syncPrompt",
+        "title": "Update older prompt copies with latest"
+      },
+      {
+        "command": "agentOrganizer.getLatestPrompt",
+        "title": "Get latest copy of prompt"
+      },
+      {
         "command": "agentOrganizer.deleteAllSkills",
         "title": "Delete"
       },
@@ -868,97 +908,147 @@
         },
         {
           "command": "agentOrganizer.addFile",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "0_add@1"
         },
         {
           "command": "agentOrganizer.addFolder",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "0_add@2"
         },
         {
           "command": "agentOrganizer.revealInFileExplorer",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "3_marketplace@2"
         },
         {
           "command": "agentOrganizer.uninstall",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "inline@1"
         },
         {
           "command": "agentOrganizer.uninstall",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "2_delete@1"
         },
         {
           "command": "agentOrganizer.moveSkill",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "1_move@1"
         },
         {
           "command": "agentOrganizer.copySkill",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "1_move@2"
         },
         {
           "command": "agentOrganizer.copyToPlugin",
-          "when": "viewItem == areaInstalledFolder && view != agentOrganizer.plugins",
+          "when": "viewItem =~ /^areaInstalledFolder/ && view != agentOrganizer.plugins && view != agentOrganizer.instructions",
           "group": "1_move@3"
         },
         {
           "command": "agentOrganizer.showInMarketplace",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "3_marketplace@1"
         },
         {
+          "command": "agentOrganizer.syncAgent",
+          "when": "view == agentOrganizer.agents && (viewItem == areaInstalledFolder_newest || viewItem == areaInstalledFile_newest)",
+          "group": "1_move@5"
+        },
+        {
+          "command": "agentOrganizer.getLatestAgent",
+          "when": "view == agentOrganizer.agents && (viewItem == areaInstalledFolder_older || viewItem == areaInstalledFile_older)",
+          "group": "1_move@6"
+        },
+        {
+          "command": "agentOrganizer.syncHook",
+          "when": "(view == agentOrganizer.hooksGithub || view == agentOrganizer.hooksKiro) && (viewItem == areaInstalledFolder_newest || viewItem == areaInstalledFile_newest)",
+          "group": "1_move@5"
+        },
+        {
+          "command": "agentOrganizer.getLatestHook",
+          "when": "(view == agentOrganizer.hooksGithub || view == agentOrganizer.hooksKiro) && (viewItem == areaInstalledFolder_older || viewItem == areaInstalledFile_older)",
+          "group": "1_move@6"
+        },
+        {
+          "command": "agentOrganizer.syncInstruction",
+          "when": "view == agentOrganizer.instructions && (viewItem == areaInstalledFolder_newest || viewItem == areaInstalledFile_newest)",
+          "group": "1_move@5"
+        },
+        {
+          "command": "agentOrganizer.getLatestInstruction",
+          "when": "view == agentOrganizer.instructions && (viewItem == areaInstalledFolder_older || viewItem == areaInstalledFile_older)",
+          "group": "1_move@6"
+        },
+        {
+          "command": "agentOrganizer.syncPlugin",
+          "when": "view == agentOrganizer.plugins && (viewItem == areaInstalledFolder_newest || viewItem == areaInstalledFile_newest)",
+          "group": "1_move@5"
+        },
+        {
+          "command": "agentOrganizer.getLatestPlugin",
+          "when": "view == agentOrganizer.plugins && (viewItem == areaInstalledFolder_older || viewItem == areaInstalledFile_older)",
+          "group": "1_move@6"
+        },
+        {
+          "command": "agentOrganizer.syncPrompt",
+          "when": "view == agentOrganizer.prompts && (viewItem == areaInstalledFolder_newest || viewItem == areaInstalledFile_newest)",
+          "group": "1_move@5"
+        },
+        {
+          "command": "agentOrganizer.getLatestPrompt",
+          "when": "view == agentOrganizer.prompts && (viewItem == areaInstalledFolder_older || viewItem == areaInstalledFile_older)",
+          "group": "1_move@6"
+        },
+        {
           "command": "agentOrganizer.pluginGetLatestAll",
-          "when": "view == agentOrganizer.plugins && viewItem == areaInstalledFolder",
+          "when": "view == agentOrganizer.plugins && viewItem =~ /^areaInstalledFolder/",
           "group": "1_move@4"
         },
         {
           "command": "agentOrganizer.openSkillFolder",
-          "when": "viewItem == areaInstalledFolder",
+          "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "inline@2"
         },
         {
           "command": "agentOrganizer.revealInFileExplorer",
-          "when": "viewItem == areaInstalledFile",
+          "when": "viewItem =~ /^areaInstalledFile/",
           "group": "3_marketplace@2"
         },
         {
           "command": "agentOrganizer.uninstall",
-          "when": "viewItem == areaInstalledFile",
+          "when": "viewItem =~ /^areaInstalledFile/",
           "group": "inline@1"
         },
         {
           "command": "agentOrganizer.openSkillFolder",
-          "when": "viewItem == areaInstalledFile",
+          "when": "viewItem =~ /^areaInstalledFile/",
           "group": "inline@2"
         },
         {
           "command": "agentOrganizer.uninstall",
-          "when": "viewItem == areaInstalledFile",
+          "when": "viewItem =~ /^areaInstalledFile/",
           "group": "2_delete@1"
         },
         {
           "command": "agentOrganizer.moveSkill",
-          "when": "viewItem == areaInstalledFile",
+          "when": "viewItem =~ /^areaInstalledFile/",
           "group": "1_move@1"
         },
         {
           "command": "agentOrganizer.copySkill",
-          "when": "viewItem == areaInstalledFile",
+          "when": "viewItem =~ /^areaInstalledFile/",
           "group": "1_move@2"
         },
         {
           "command": "agentOrganizer.copyToPlugin",
-          "when": "viewItem == areaInstalledFile",
+          "when": "viewItem =~ /^areaInstalledFile/ && view != agentOrganizer.instructions",
           "group": "1_move@3"
         },
         {
           "command": "agentOrganizer.showInMarketplace",
-          "when": "viewItem == areaInstalledFile",
+          "when": "viewItem =~ /^areaInstalledFile/",
           "group": "3_marketplace@1"
         },
         {
