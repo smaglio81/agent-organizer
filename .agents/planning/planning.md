@@ -162,3 +162,93 @@ Currently, Skills has a view.
   * The option should appear in the same group and below `Copy To Plugins...`
   * The option should search through each plugin and see if that item exists in it's respective folder under a plugin.
     * If it's found, then it should update the plugins copy.
+
+## Adding New Item
+
+* Each Area View's top level folder node should have a right-click option `Add {Area}`
+  * This should be the first option in the right-click menu
+  * The New option will ask for a `name`
+    * The name should be normalized to be
+      * lowercase
+      * non-alphanumeric characters should be replaced with dashes (-)
+      * multiple dashes in a row should be reduced to a single dash
+  * This will create a new Area Item under that file location.
+  * Here a special instructions for each Area type:
+    * Skills
+      * Create a folder for the normalized name.
+      * The folder should have a SKILL.md
+      * SKILL.md should contain frontmatter with properties for `name`, `description`, and `metadata` -> `version`
+        * `name` should be the normalized name
+        * `metadata` -> `version` should be today's date in "yyyy.MM.dd" format
+    * Agents
+      * Create a single file, named `{normalized-name}.agents.md`
+      * The file should contain frontmatter with properties for `name`, `description`
+        * `name` should be the normalized name
+    * Hooks - GitHub
+      * Create a folder for the normalized name.
+      * Create a file named `README.md`
+        * Should contain frontmatter with properties for `name`, `description`, `tags` and `metadata` -> `version`
+          * `name` should be the normalized name
+          * `tags` should be an empty array
+          * `metadata` -> `version` should be today's date in "yyyy.MM.dd" format
+      * Create a file named `{normalized-name}.hooks.json`
+        * The file contents should default to:
+          {
+            "version": 1,
+            "hooks": {
+            }
+          }
+    * Hooks - Kiro
+      * Do the same thing as `Hooks - GitHub`
+    * Instructions
+      * Create a single file, named `{normalized-name}.instruction.md`
+        * The file should contain frontmatter with properties for `name`, `description`
+          * `name` should be the normalized name
+    * Plugins
+      * Create a folder for the normalized name.
+      * The folder should have a README.md
+      * README.md should contain frontmatter with properties for `name`, `description`, and `metadata` -> `version`
+        * `name` should be the normalized name
+      * The folder should have a plugin.json
+        * Example format:
+          {
+            "name": "my-dev-tools",
+            "description": "React development utilities",
+            "version": "1.2.0",
+            "author": {
+              "name": "Jane Doe",
+              "email": "jane@example.com"
+            },
+            "license": "MIT",
+            "keywords": ["react", "frontend"],
+            "agents": "agents/",
+            "skills": ["skills/", "extra-skills/"],
+            "hooks": "hooks.json",
+            "mcpServers": ".mcp.json"
+          }
+        * Example format from: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating
+          * Which is superset of: https://code.claude.com/docs/en/plugins
+      * The folder should contain an `.mcp.json`
+        * The `.mcp.json` contents should default to:
+          {
+            "mcpServers": {
+            }
+          }
+      * The folder should contain a folder `.claude-plugin`. The folder should contains
+        * A symlink for `plugin.json` which points to the root level `plugin.json`
+    * Prompts
+      * Create a single file, named `{normalized-name}.prompt.md`
+        * The file should contain frontmatter with properties for `name`, `description`
+          * `name` should be the normalized name
+* The Title Bar Commands on each Area View should have a `Add {Area}` button added. The `Add {Area}` button:
+  * Shold be between the `Default Download Location` and `Expand All` buttons
+  * Should do the same things as the `New` right-click option, except ...
+  * It should a quick pick menu to ask where the file should be created
+  * The quick pick menu should
+    * List locations from the associated configuration setting (see `Refactoring Defualt Download Location` above)
+    * Include a `Custom...` option. if `Custom...` is used:
+      * Only allow relative paths or paths that start with `~` (user folder)
+      * Don't allow `..`'s in paths
+      * Implement other defensive measures so that paths can't be used for malicious intent
+      * If the path ends in `.md`, assume the last segment is the name of the item they want to create.
+  * If the location doesn't exist, create it.

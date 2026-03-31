@@ -14,6 +14,3 @@
 
 * Commit the latest changes with the summary.
 * Push the latest commits to origin.
-
-* Create a Pull Request between the version branch and `main`.
-  * Use CHANGELOG.md to create a Pull Request summary.

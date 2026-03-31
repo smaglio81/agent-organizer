@@ -105,6 +105,28 @@ export function parseGitHubUrl(input: string): { owner: string; repo: string; br
     return { owner, repo, branch };
 }
 
+/**
+ * Normalize a user-provided name for use as a file/folder name:
+ * lowercase, non-alphanumeric → dashes, collapse multiple dashes.
+ */
+export function normalizeName(raw: string): string {
+    return raw
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Get today's date in yyyy.MM.dd format.
+ */
+export function todayStamp(): string {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}.${mm}.${dd}`;
+}
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Agent Organizer extension is now active!');
 
@@ -385,6 +407,220 @@ export function activate(context: vscode.ExtensionContext) {
         }
     }
 
+    /**
+     * Create a new area item at the given location URI.
+     * @param area The content area type
+     * @param name The normalized item name
+     * @param locationUri The parent directory URI where the item will be created
+     */
+    async function createNewAreaItem(area: ContentArea, name: string, locationUri: vscode.Uri): Promise<void> {
+        await vscode.workspace.fs.createDirectory(locationUri);
+
+        switch (area) {
+            case 'skills': {
+                const folderUri = vscode.Uri.joinPath(locationUri, name);
+                await vscode.workspace.fs.createDirectory(folderUri);
+                const skillMd = `---\nname: ${name}\ndescription: \nmetadata:\n  version: "${todayStamp()}"\n---\n`;
+                const fileUri = vscode.Uri.joinPath(folderUri, 'SKILL.md');
+                await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(skillMd));
+                await vscode.commands.executeCommand('vscode.open', fileUri);
+                break;
+            }
+            case 'agents': {
+                const fileUri = vscode.Uri.joinPath(locationUri, `${name}.agent.md`);
+                const content = `---\nname: ${name}\ndescription: \n---\n`;
+                await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(content));
+                await vscode.commands.executeCommand('vscode.open', fileUri);
+                break;
+            }
+            case 'hooksGithub': {
+                const folderUri = vscode.Uri.joinPath(locationUri, name);
+                await vscode.workspace.fs.createDirectory(folderUri);
+                // README.md with frontmatter
+                const readmeMd = `---\nname: ${name}\ndescription: \ntags: []\nmetadata:\n  version: "${todayStamp()}"\n---\n`;
+                await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(folderUri, 'README.md'), new TextEncoder().encode(readmeMd));
+                // hooks.json
+                const hooksJson = JSON.stringify({ version: 1, hooks: {} }, null, 2) + '\n';
+                const hooksFileUri = vscode.Uri.joinPath(folderUri, `${name}.hooks.json`);
+                await vscode.workspace.fs.writeFile(hooksFileUri, new TextEncoder().encode(hooksJson));
+                await vscode.commands.executeCommand('vscode.open', hooksFileUri);
+                break;
+            }
+            case 'hooksKiro': {
+                const folderUri = vscode.Uri.joinPath(locationUri, name);
+                await vscode.workspace.fs.createDirectory(folderUri);
+                // README.md with frontmatter
+                const readmeMd = `---\nname: ${name}\ndescription: \ntags: []\nmetadata:\n  version: "${todayStamp()}"\n---\n`;
+                await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(folderUri, 'README.md'), new TextEncoder().encode(readmeMd));
+                // hooks.json
+                const hooksJson = JSON.stringify({ version: 1, hooks: {} }, null, 2) + '\n';
+                const hooksFileUri = vscode.Uri.joinPath(folderUri, `${name}.hooks.json`);
+                await vscode.workspace.fs.writeFile(hooksFileUri, new TextEncoder().encode(hooksJson));
+                await vscode.commands.executeCommand('vscode.open', hooksFileUri);
+                break;
+            }
+            case 'instructions': {
+                const fileUri = vscode.Uri.joinPath(locationUri, `${name}.instructions.md`);
+                const content = `---\nname: ${name}\ndescription: \n---\n`;
+                await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(content));
+                await vscode.commands.executeCommand('vscode.open', fileUri);
+                break;
+            }
+            case 'plugins': {
+                const folderUri = vscode.Uri.joinPath(locationUri, name);
+                await vscode.workspace.fs.createDirectory(folderUri);
+                // README.md
+                const readmeMd = `---\nname: ${name}\ndescription: \nmetadata:\n  version: "${todayStamp()}"\n---\n`;
+                const readmeUri = vscode.Uri.joinPath(folderUri, 'README.md');
+                await vscode.workspace.fs.writeFile(readmeUri, new TextEncoder().encode(readmeMd));
+                // plugin.json
+                const pluginJson = JSON.stringify({
+                    name,
+                    description: '',
+                    version: '0.1.0',
+                    agents: 'agents/',
+                    skills: 'skills/',
+                    hooks: 'hooks/',
+                    mcpServers: '.mcp.json'
+                }, null, 2) + '\n';
+                await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(folderUri, 'plugin.json'), new TextEncoder().encode(pluginJson));
+                // .mcp.json
+                const mcpJson = JSON.stringify({ mcpServers: {} }, null, 2) + '\n';
+                await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(folderUri, '.mcp.json'), new TextEncoder().encode(mcpJson));
+                // .claude-plugin/plugin.json symlink — VS Code FS API doesn't support symlinks,
+                // so create a copy with a comment noting it mirrors the root plugin.json
+                const claudePluginDir = vscode.Uri.joinPath(folderUri, '.claude-plugin');
+                await vscode.workspace.fs.createDirectory(claudePluginDir);
+                await vscode.workspace.fs.copy(vscode.Uri.joinPath(folderUri, 'plugin.json'), vscode.Uri.joinPath(claudePluginDir, 'plugin.json'));
+                await vscode.commands.executeCommand('vscode.open', vscode.Uri.joinPath(folderUri, 'plugin.json'));
+                break;
+            }
+            case 'prompts': {
+                const fileUri = vscode.Uri.joinPath(locationUri, `${name}.prompt.md`);
+                const content = `---\nname: ${name}\ndescription: \n---\n`;
+                await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(content));
+                await vscode.commands.executeCommand('vscode.open', fileUri);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Validate a custom location path: must be relative or start with ~, no .., no absolute paths.
+     */
+    function validateCustomLocation(value: string | undefined): string | undefined {
+        if (!value?.trim()) { return 'Location is required'; }
+        const v = value.trim();
+        // Must be relative or start with ~
+        if (/^[a-zA-Z]:/.test(v) || (v.startsWith('/') && !v.startsWith('~'))) { return 'Only relative paths or paths starting with ~ are allowed'; }
+        if (v.includes('..')) { return 'Path cannot contain ".."'; }
+        if (/[<>"|?*]/.test(v)) { return 'Path contains invalid characters'; }
+        return undefined;
+    }
+
+    /**
+     * Prompt for a name, normalize it, and create a new area item.
+     * @param area The content area
+     * @param locationUri The parent directory URI
+     */
+    async function promptAndCreateItem(area: ContentArea, locationUri: vscode.Uri): Promise<void> {
+        const areaLabel = AREA_DEFINITIONS[area].label;
+        const raw = await vscode.window.showInputBox({
+            prompt: `Name for new ${areaLabel} item`,
+            validateInput: value => {
+                if (!value?.trim()) { return 'Name is required'; }
+                const normalized = normalizeName(value);
+                if (!normalized) { return 'Name must contain at least one alphanumeric character'; }
+                return undefined;
+            }
+        });
+        if (!raw) { return; }
+        const name = normalizeName(raw);
+        try {
+            await createNewAreaItem(area, name, locationUri);
+            await syncInstalledStatus();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to create "${name}": ${message}`);
+        }
+    }
+
+    /**
+     * Toolbar "New" handler: show a location quick pick, then prompt for name and create.
+     */
+    async function newItemFromToolbar(area: ContentArea): Promise<void> {
+        const locations = pathService.getDefaultDownloadLocations(area);
+        const defaultLoc = pathService.getDefaultDownloadLocation(area);
+
+        const items: vscode.QuickPickItem[] = locations.map(loc => ({
+            label: loc,
+            description: normalizeSeparators(loc) === normalizeSeparators(defaultLoc) ? '(default)' : undefined
+        }));
+
+        // Add default if not already in the list
+        if (!locations.some(l => normalizeSeparators(l) === normalizeSeparators(defaultLoc))) {
+            items.unshift({ label: defaultLoc, description: '(default)' });
+        }
+
+        items.push({ label: 'Custom...', description: 'Enter a custom path' });
+
+        const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: `Where should the new ${AREA_DEFINITIONS[area].label} item be created?`
+        });
+        if (!selected) { return; }
+
+        let locationPath: string;
+        if (selected.label === 'Custom...') {
+            const custom = await vscode.window.showInputBox({
+                prompt: 'Enter a relative path or path starting with ~',
+                validateInput: validateCustomLocation
+            });
+            if (!custom) { return; }
+            locationPath = custom.trim();
+
+            // If the path ends in .md, treat the last segment as the item name
+            if (locationPath.endsWith('.md')) {
+                const lastSlash = locationPath.lastIndexOf('/');
+                const fileName = lastSlash >= 0 ? locationPath.substring(lastSlash + 1) : locationPath;
+                const parentPath = lastSlash >= 0 ? locationPath.substring(0, lastSlash) : '.';
+                const rawName = fileName.replace(/\.[^.]+$/, ''); // strip extension
+                const name = normalizeName(rawName);
+                if (!name) {
+                    vscode.window.showErrorMessage('Name must contain at least one alphanumeric character.');
+                    return;
+                }
+                const wf = pathService.getWorkspaceFolderForLocation(parentPath);
+                const locationUri = pathService.resolveLocationToUri(parentPath, wf);
+                if (!locationUri) {
+                    vscode.window.showErrorMessage('Failed to resolve location.');
+                    return;
+                }
+                try {
+                    await createNewAreaItem(area, name, locationUri);
+                    await syncInstalledStatus();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    vscode.window.showErrorMessage(`Failed to create "${name}": ${message}`);
+                }
+                return;
+            }
+        } else {
+            locationPath = selected.label;
+        }
+
+        const wf = pathService.getWorkspaceFolderForLocation(locationPath);
+        if (pathService.requiresWorkspaceFolder(locationPath) && !wf) {
+            vscode.window.showErrorMessage('No workspace folder open. Please open a folder first.');
+            return;
+        }
+        const locationUri = pathService.resolveLocationToUri(locationPath, wf);
+        if (!locationUri) {
+            vscode.window.showErrorMessage('Failed to resolve location.');
+            return;
+        }
+        await promptAndCreateItem(area, locationUri);
+    }
+
     for (const { area, viewId } of areaViewIds) {
         const provider = new InstalledAreaTreeDataProvider(context, pathService, area, viewId);
         areaProviders.set(viewId, provider);
@@ -508,6 +744,7 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.commands.registerCommand(`${viewId}.clearSearch`, () => provider.clearSearch()),
                 vscode.commands.registerCommand(`${viewId}.expandAll`, () => provider.expandAll()),
                 vscode.commands.registerCommand(`${viewId}.selectDefaultDownloadLocation`, () => selectDefaultDownloadLocation(area)),
+                vscode.commands.registerCommand(`${viewId}.newItem`, () => newItemFromToolbar(area)),
             ];
         }),
 
@@ -1403,6 +1640,85 @@ export function activate(context: vscode.ExtensionContext) {
             // since TreeDataProvider has no API to programmatically collapse nodes.
             await vscode.commands.executeCommand('workbench.actions.treeView.agentOrganizer.skills.collapseAll');
         }),
+
+        // New item from Skills toolbar
+        vscode.commands.registerCommand('agentOrganizer.newSkillItem', () => newItemFromToolbar('skills')),
+
+        // New item from right-click on a location folder (area views)
+        vscode.commands.registerCommand('agentOrganizer.newItemAtLocation', async (item: AreaLocationTreeItem) => {
+            if (!item) { return; }
+            // Determine which area this location belongs to
+            let targetArea: ContentArea | undefined;
+            for (const { area, viewId } of areaViewIds) {
+                const provider = areaProviders.get(viewId);
+                if (provider && provider.getInstalledItems().some(i => {
+                    const parentLoc = normalizeSeparators(i.location);
+                    const lastSlash = parentLoc.lastIndexOf('/');
+                    const parent = lastSlash > 0 ? parentLoc.substring(0, lastSlash) : parentLoc;
+                    return parent === item.location;
+                })) {
+                    targetArea = area;
+                    break;
+                }
+            }
+            // If no items exist yet, try matching by location path
+            if (!targetArea) {
+                for (const { area, viewId } of areaViewIds) {
+                    const provider = areaProviders.get(viewId);
+                    if (provider) {
+                        // Check if this location is one of the area's scan locations
+                        const locations = pathService.getDefaultDownloadLocations(area).map(normalizeSeparators);
+                        const defaultLoc = normalizeSeparators(pathService.getDefaultDownloadLocation(area));
+                        if (locations.includes(item.location) || defaultLoc === item.location) {
+                            targetArea = area;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!targetArea) { return; }
+
+            const wf = pathService.getWorkspaceFolderForLocation(item.location);
+            const locationUri = pathService.resolveLocationToUri(item.location, wf);
+            if (!locationUri) {
+                vscode.window.showErrorMessage('Failed to resolve location.');
+                return;
+            }
+            await promptAndCreateItem(targetArea, locationUri);
+        }),
+
+        // New item from right-click on a Skills location folder
+        vscode.commands.registerCommand('agentOrganizer.newSkillAtLocation', async (item: LocationTreeItem) => {
+            if (!item) { return; }
+            const wf = pathService.getWorkspaceFolderForLocation(item.location);
+            const locationUri = pathService.resolveLocationToUri(item.location, wf);
+            if (!locationUri) {
+                vscode.window.showErrorMessage('Failed to resolve location.');
+                return;
+            }
+            await promptAndCreateItem('skills', locationUri);
+        }),
+
+        // Per-area "Add {Area}" right-click commands on location folders
+        ...([
+            ['agentOrganizer.newAgentAtLocation', 'agents'],
+            ['agentOrganizer.newHookGithubAtLocation', 'hooksGithub'],
+            ['agentOrganizer.newHookKiroAtLocation', 'hooksKiro'],
+            ['agentOrganizer.newInstructionAtLocation', 'instructions'],
+            ['agentOrganizer.newPluginAtLocation', 'plugins'],
+            ['agentOrganizer.newPromptAtLocation', 'prompts'],
+        ] as const).map(([cmdId, area]) =>
+            vscode.commands.registerCommand(cmdId, async (item: AreaLocationTreeItem) => {
+                if (!item) { return; }
+                const wf = pathService.getWorkspaceFolderForLocation(item.location);
+                const locationUri = pathService.resolveLocationToUri(item.location, wf);
+                if (!locationUri) {
+                    vscode.window.showErrorMessage('Failed to resolve location.');
+                    return;
+                }
+                await promptAndCreateItem(area, locationUri);
+            })
+        ),
 
         // Remove a skill repository from the marketplace
         vscode.commands.registerCommand('agentOrganizer.removeRepository', async (item: SourceTreeItem | FailedSourceTreeItem) => {
