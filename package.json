@@ -2,7 +2,7 @@
   "name": "agent-organizer",
   "displayName": "Agent Organizer",
   "description": "Agent Organizer Marketplace and Toolkit",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "icon": "resources/logo.png",
   "publisher": "smaglio81",
   "engines": {
@@ -491,6 +491,73 @@
         "icon": "$(collapse-all)"
       },
       {
+        "command": "agentOrganizer.newSkillItem",
+        "title": "Add Skill",
+        "icon": "$(add)"
+      },
+      {
+        "command": "agentOrganizer.newSkillAtLocation",
+        "title": "Add Skill"
+      },
+      {
+        "command": "agentOrganizer.newItemAtLocation",
+        "title": "Add Item"
+      },
+      {
+        "command": "agentOrganizer.newAgentAtLocation",
+        "title": "Add Agent"
+      },
+      {
+        "command": "agentOrganizer.newHookGithubAtLocation",
+        "title": "Add Hook"
+      },
+      {
+        "command": "agentOrganizer.newHookKiroAtLocation",
+        "title": "Add Hook"
+      },
+      {
+        "command": "agentOrganizer.newInstructionAtLocation",
+        "title": "Add Instruction"
+      },
+      {
+        "command": "agentOrganizer.newPluginAtLocation",
+        "title": "Add Plugin"
+      },
+      {
+        "command": "agentOrganizer.newPromptAtLocation",
+        "title": "Add Prompt"
+      },
+      {
+        "command": "agentOrganizer.agents.newItem",
+        "title": "Add Agent",
+        "icon": "$(add)"
+      },
+      {
+        "command": "agentOrganizer.hooksGithub.newItem",
+        "title": "Add Hook",
+        "icon": "$(add)"
+      },
+      {
+        "command": "agentOrganizer.hooksKiro.newItem",
+        "title": "Add Hook",
+        "icon": "$(add)"
+      },
+      {
+        "command": "agentOrganizer.instructions.newItem",
+        "title": "Add Instruction",
+        "icon": "$(add)"
+      },
+      {
+        "command": "agentOrganizer.plugins.newItem",
+        "title": "Add Plugin",
+        "icon": "$(add)"
+      },
+      {
+        "command": "agentOrganizer.prompts.newItem",
+        "title": "Add Prompt",
+        "icon": "$(add)"
+      },
+      {
         "command": "agentOrganizer.addFile",
         "title": "Add File",
         "icon": "$(new-file)"
@@ -559,14 +626,19 @@
           "group": "navigation@3"
         },
         {
-          "command": "agentOrganizer.expandAll",
+          "command": "agentOrganizer.newSkillItem",
           "when": "view == agentOrganizer.skills",
           "group": "navigation@4"
         },
         {
-          "command": "agentOrganizer.collapseAll",
+          "command": "agentOrganizer.expandAll",
           "when": "view == agentOrganizer.skills",
           "group": "navigation@5"
+        },
+        {
+          "command": "agentOrganizer.collapseAll",
+          "when": "view == agentOrganizer.skills",
+          "group": "navigation@6"
         },
         {
           "command": "agentOrganizer.agents.search",
@@ -589,9 +661,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "agentOrganizer.agents.expandAll",
+          "command": "agentOrganizer.agents.newItem",
           "when": "view == agentOrganizer.agents",
           "group": "navigation@4"
+        },
+        {
+          "command": "agentOrganizer.agents.expandAll",
+          "when": "view == agentOrganizer.agents",
+          "group": "navigation@5"
         },
         {
           "command": "agentOrganizer.hooksGithub.search",
@@ -614,9 +691,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "agentOrganizer.hooksGithub.expandAll",
+          "command": "agentOrganizer.hooksGithub.newItem",
           "when": "view == agentOrganizer.hooksGithub",
           "group": "navigation@4"
+        },
+        {
+          "command": "agentOrganizer.hooksGithub.expandAll",
+          "when": "view == agentOrganizer.hooksGithub",
+          "group": "navigation@5"
         },
         {
           "command": "agentOrganizer.hooksKiro.search",
@@ -639,9 +721,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "agentOrganizer.hooksKiro.expandAll",
+          "command": "agentOrganizer.hooksKiro.newItem",
           "when": "view == agentOrganizer.hooksKiro",
           "group": "navigation@4"
+        },
+        {
+          "command": "agentOrganizer.hooksKiro.expandAll",
+          "when": "view == agentOrganizer.hooksKiro",
+          "group": "navigation@5"
         },
         {
           "command": "agentOrganizer.instructions.search",
@@ -664,9 +751,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "agentOrganizer.instructions.expandAll",
+          "command": "agentOrganizer.instructions.newItem",
           "when": "view == agentOrganizer.instructions",
           "group": "navigation@4"
+        },
+        {
+          "command": "agentOrganizer.instructions.expandAll",
+          "when": "view == agentOrganizer.instructions",
+          "group": "navigation@5"
         },
         {
           "command": "agentOrganizer.plugins.search",
@@ -689,9 +781,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "agentOrganizer.plugins.expandAll",
+          "command": "agentOrganizer.plugins.newItem",
           "when": "view == agentOrganizer.plugins",
           "group": "navigation@4"
+        },
+        {
+          "command": "agentOrganizer.plugins.expandAll",
+          "when": "view == agentOrganizer.plugins",
+          "group": "navigation@5"
         },
         {
           "command": "agentOrganizer.prompts.search",
@@ -714,9 +811,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "agentOrganizer.prompts.expandAll",
+          "command": "agentOrganizer.prompts.newItem",
           "when": "view == agentOrganizer.prompts",
           "group": "navigation@4"
+        },
+        {
+          "command": "agentOrganizer.prompts.expandAll",
+          "when": "view == agentOrganizer.prompts",
+          "group": "navigation@5"
         }
       ],
       "view/item/context": [
@@ -876,6 +978,11 @@
           "group": "0_move@1"
         },
         {
+          "command": "agentOrganizer.newSkillAtLocation",
+          "when": "view == agentOrganizer.skills && viewItem == location",
+          "group": "0_add@1"
+        },
+        {
           "command": "agentOrganizer.copySkill",
           "when": "view == agentOrganizer.skills && viewItem == location",
           "group": "0_move@2"
@@ -909,6 +1016,36 @@
           "command": "agentOrganizer.moveSkill",
           "when": "viewItem == areaLocation",
           "group": "0_move@1"
+        },
+        {
+          "command": "agentOrganizer.newAgentAtLocation",
+          "when": "viewItem == areaLocation && view == agentOrganizer.agents",
+          "group": "0_add@1"
+        },
+        {
+          "command": "agentOrganizer.newHookGithubAtLocation",
+          "when": "viewItem == areaLocation && view == agentOrganizer.hooksGithub",
+          "group": "0_add@1"
+        },
+        {
+          "command": "agentOrganizer.newHookKiroAtLocation",
+          "when": "viewItem == areaLocation && view == agentOrganizer.hooksKiro",
+          "group": "0_add@1"
+        },
+        {
+          "command": "agentOrganizer.newInstructionAtLocation",
+          "when": "viewItem == areaLocation && view == agentOrganizer.instructions",
+          "group": "0_add@1"
+        },
+        {
+          "command": "agentOrganizer.newPluginAtLocation",
+          "when": "viewItem == areaLocation && view == agentOrganizer.plugins",
+          "group": "0_add@1"
+        },
+        {
+          "command": "agentOrganizer.newPromptAtLocation",
+          "when": "viewItem == areaLocation && view == agentOrganizer.prompts",
+          "group": "0_add@1"
         },
         {
           "command": "agentOrganizer.copySkill",

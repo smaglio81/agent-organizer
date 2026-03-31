@@ -71,6 +71,7 @@ All actions appear in the `agentOrganizer.skills` view title bar.
 | Clear Search (close icon) | `agentOrganizer.clearSearchInstalled` | Clears the active search filter. Only shown when a search is active (`agentOrganizer:installedSearchActive` context key). |
 | Refresh | `agentOrganizer.refreshInstalled` | Re-scans all skill locations and refreshes the tree. Also syncs installed skill names back to the Marketplace view. |
 | Default Download Location (folder icon) | `agentOrganizer.selectInstallLocation` | Opens a QuickPick to change the skills download location in `agentOrganizer.installLocations`. Selecting "Custom..." opens the VS Code Settings UI filtered to `agentOrganizer.installLocations`. |
+| Add Skill (add icon) | `agentOrganizer.newSkillItem` | Opens a location QuickPick, prompts for a name, and creates a new skill folder with `SKILL.md` scaffolding. |
 | Expand All | `agentOrganizer.expandAll` | Expands all location groups. Uses `TreeView.reveal()` (requires `getParent()` implementation). |
 | Collapse All | `agentOrganizer.collapseAll` | Collapses all location groups. Delegates to the built-in `workbench.actions.treeView.agentOrganizer.skills.collapseAll` command. |
 
@@ -114,6 +115,7 @@ All actions appear in the `agentOrganizer.skills` view title bar.
 
 | Menu Item | Command | Description |
 |---|---|---|
+| Add Skill | `agentOrganizer.newSkillAtLocation` | Prompts for a name and creates a new skill folder with `SKILL.md` scaffolding at this location. |
 | Delete | `agentOrganizer.deleteAllSkills` | Deletes all skills under this location folder (moved to trash). |
 | Reveal in File Explorer | `agentOrganizer.revealInFileExplorer` | Opens the location folder in the system file explorer. |
 

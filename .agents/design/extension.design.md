@@ -61,7 +61,7 @@ Each content area (except Skills, which has its own dedicated provider) uses the
 - Multi-file items (`AreaInstalledItemTreeItem`) expand to show folder contents
 - Multi-file items use recursive definition file search (e.g., `plugin.json` may be nested within the item folder)
 - Single-file items open in the editor on double-click
-- Each view has its own Search, Clear Search, Refresh, Default Download Location, and Expand All toolbar commands
+- Each view has its own Search, Clear Search, Refresh, Default Download Location, Add {Area}, and Expand All toolbar commands
 - "Searching for installed {area}..." loading message with spinner during initial scan (see known issue in `areaViewLoading.design.md`)
 - Welcome messages ("No {area} found.") when empty after scan
 - File watchers auto-refresh when items are created or deleted (including watchers on the default download location)
@@ -71,7 +71,7 @@ Each content area (except Skills, which has its own dedicated provider) uses the
 
 | Node Type | Context Value | Actions |
 |---|---|---|
-| Location | `areaLocation` | Move to..., Copy to..., Delete, Reveal in File Explorer |
+| Location | `areaLocation` | Add {Area}, Move to..., Copy to..., Delete, Reveal in File Explorer |
 | Multi-file item | `areaInstalledFolder` | Add File, Add Folder, Move to..., Copy to..., Copy to Plugin... (not in Plugins view), Update Plugins (not in Plugins view), Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
 | Single-file item | `areaInstalledFile` | Move to..., Copy to..., Copy to Plugin..., Update Plugins, Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
 | Subfolder | `areaItemFolder` | Add File, Add Folder, Delete, Reveal in File Explorer |
