@@ -4,11 +4,10 @@ All notable changes to the "agent-organizer" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.0.6]
+## [0.0.7]
 
 ### Added
 
-- "Update Plugins" right-click option on installed items in Agents, Skills, Prompts / Commands, and Hooks - GitHub views. Searches all installed plugins for a copy of the item in the plugin's corresponding area subfolder (`/agents`, `/skills`, `/commands`, `/hooks`) and overwrites it with the current version. Results shown via output channel with per-plugin ✅/❌ status; toast notification includes "Show Details" button.
 - "Add {Area}" button in all view title bars (between Default Download Location and Expand All). Opens a location quick pick, then prompts for a name and creates a new item with area-specific scaffolding. Custom paths are validated (relative or `~` only, no `..`, no invalid characters). If the path ends in `.md`, the last segment is used as the item name.
 - "Add {Area}" right-click option on location folders in all views (first item in the menu). Prompts for a name and creates a new item at that location.
 - Area-specific scaffolding for new items:
@@ -20,6 +19,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   - Plugins: folder + `README.md` + `plugin.json` + `.mcp.json` + `.claude-plugin/plugin.json`
   - Prompts: `{name}.prompt.md` with frontmatter (`name`, `description`)
 - Name normalization for new items: lowercase, non-alphanumeric characters replaced with dashes, multiple dashes collapsed.
+- `src/test/addItem.test.ts` — 14 tests covering name normalization, date stamping, and skill scaffolding creation.
+
+## [0.0.6]
+
+### Added
+
+- "Update Plugins" right-click option on installed items in Agents, Skills, Prompts / Commands, and Hooks - GitHub views. Searches all installed plugins for a copy of the item in the plugin's corresponding area subfolder (`/agents`, `/skills`, `/commands`, `/hooks`) and overwrites it with the current version. Results shown via output channel with per-plugin ✅/❌ status; toast notification includes "Show Details" button.
 
 ### Changed
 

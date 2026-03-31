@@ -109,7 +109,7 @@ export function parseGitHubUrl(input: string): { owner: string; repo: string; br
  * Normalize a user-provided name for use as a file/folder name:
  * lowercase, non-alphanumeric → dashes, collapse multiple dashes.
  */
-function normalizeName(raw: string): string {
+export function normalizeName(raw: string): string {
     return raw
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -119,7 +119,7 @@ function normalizeName(raw: string): string {
 /**
  * Get today's date in yyyy.MM.dd format.
  */
-function todayStamp(): string {
+export function todayStamp(): string {
     const d = new Date();
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');

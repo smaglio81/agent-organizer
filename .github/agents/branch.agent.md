@@ -1,3 +1,5 @@
+* Do not ask to create a spec session for this. This is not spec driven.
+
 * Check the last commit to main's message. It should start with a version number, that's the prior version number.
 
 * Review the list of changes and create a summary of changes in memory.
