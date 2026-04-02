@@ -4,6 +4,19 @@ All notable changes to the "agent-organizer" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.8]
+
+### Added
+
+- "Rename" right-click option on all installed area items and skills. Renames the folder (multi-file) or file (single-file) on disk and updates the `name` field in the definition file (YAML frontmatter or JSON).
+- "Copy Name" right-click option on all installed area items and skills. Copies the item name to the clipboard.
+- `.kiro/{area}` and `~/.kiro/{area}` added to default location template prefixes (now 8 prefixes total).
+
+### Changed
+
+- Rename and Copy Name appear in their own menu group (`0_rename`) above Move to... / Copy to..., in the order: Rename, Copy Name.
+- `install:vsix` / `uninstall:vsix` scripts updated to use `code-insiders`. Added `install:vsix:kiro`, `uninstall:vsix:kiro`, `reinstall:vsix`, and `reinstall:vsix:kiro` convenience scripts.
+
 ## [0.0.7]
 
 ### Added
@@ -70,7 +83,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - For JSON-based multi-file areas (Hooks - GitHub, Plugins), the detail panel now fetches and renders `README.md` from the item's folder. The README tab shows rendered markdown; Raw Source shows the raw README content. Name and description fall back to README frontmatter if not provided by the JSON definition file.
 - Per-area "Default Download Location" button in all view title bars (Skills and all area views). Each area can have its own configured download location via `agentOrganizer.installLocations`.
 - `agentOrganizer.installLocations` setting: an object with per-area default download locations. Defaults to `~/.copilot/{area}` for each area (hooksKiro defaults to `.kiro/hooks`). Created automatically in user settings on first activation if not present.
-- Each area resolves its list of possible download locations from its `chat.*` configuration key (e.g., `chat.agentFilesLocations` for agents, `chat.pluginLocations` for plugins). Falls back to a generated default list using 6 template prefixes (`{.agents,.claude,.github,~/.agents,~/.claude,~/.copilot}/{area}`).
+- Each area resolves its list of possible download locations from its `chat.*` configuration key (e.g., `chat.agentFilesLocations` for agents, `chat.pluginLocations` for plugins). Falls back to a generated default list using 8 template prefixes (`{.agents,.claude,.github,.kiro,~/.agents,~/.claude,~/.copilot,~/.kiro}/{area}`).
 - "Show in Marketplace" right-click menu on all area view items (both single-file and multi-file). Uses `revealItemByName()` which searches both skills and area file items in the marketplace tree.
 - Green check icon on marketplace items that are installed locally — now works for all content areas, not just skills. Installed names are collected from both the Skills provider and all area providers on every sync.
 - Area-specific download: the install command now uses the area-specific default download location (from `agentOrganizer.installLocations`) instead of always using the skills location.

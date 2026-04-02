@@ -26,7 +26,7 @@ The extension adds an **Agent Organizer** activity bar container with 8 tree vie
 | `agentOrganizer.githubToken` | string | `""` | Optional GitHub personal access token for higher API rate limits. |
 | `agentOrganizer.cacheTimeout` | number | `3600` | Seconds before cached marketplace data expires. |
 
-Each area's list of possible download locations is resolved from its `chat.*` configuration key (e.g., `chat.agentFilesLocations` for agents, `chat.pluginLocations` for plugins, `chat.agentSkillsLocations` for skills). If the config key is not set, a default list is generated from 6 template prefixes (`{.agents,.claude,.github,~/.agents,~/.claude,~/.copilot}/{area}`). Hooks - Kiro is fixed to `.kiro/hooks`.
+Each area's list of possible download locations is resolved from its `chat.*` configuration key (e.g., `chat.agentFilesLocations` for agents, `chat.pluginLocations` for plugins, `chat.agentSkillsLocations` for skills). If the config key is not set, a default list is generated from 8 template prefixes (`{.agents,.claude,.github,.kiro,~/.agents,~/.claude,~/.copilot,~/.kiro}/{area}`). Hooks - Kiro is fixed to `.kiro/hooks`.
 
 Related external settings: each area view scans locations from its own `chat.*` setting (e.g. `chat.agentFilesLocations` for agents, `chat.pluginLocations` for plugins). When the setting isn't configured, a default list is generated from the template prefixes. The configured download location from `agentOrganizer.installLocations` is always included in the scan.
 
@@ -72,8 +72,8 @@ Each content area (except Skills, which has its own dedicated provider) uses the
 | Node Type | Context Value | Actions |
 |---|---|---|
 | Location | `areaLocation` | Add {Area}, Move to..., Copy to..., Delete, Reveal in File Explorer |
-| Multi-file item | `areaInstalledFolder` | Add File, Add Folder, Move to..., Copy to..., Copy to Plugin... (not in Plugins view), Update Plugins (not in Plugins view), Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
-| Single-file item | `areaInstalledFile` | Move to..., Copy to..., Copy to Plugin..., Update Plugins, Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
+| Multi-file item | `areaInstalledFolder` | Add File, Add Folder, Rename, Move to..., Copy to..., Copy to Plugin... (not in Plugins view), Update Plugins (not in Plugins view), Copy Name, Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
+| Single-file item | `areaInstalledFile` | Rename, Move to..., Copy to..., Copy to Plugin..., Update Plugins, Copy Name, Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
 | Subfolder | `areaItemFolder` | Add File, Add Folder, Delete, Reveal in File Explorer |
 | File | `areaItemFile` | Rename, Delete, Reveal in File Explorer |
 

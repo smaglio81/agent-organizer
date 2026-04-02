@@ -116,9 +116,11 @@ Currently, Skills has a view.
     * .agents/{area}
     * .claude/{area}
     * .github/{area}
+    * .kiro/{area}
     * ~/.agents/{area}
     * ~/.claude/{area}
     * ~/.copilot/{area}
+    * ~/.kiro/{area}
   * These `area` values:
     * agents
     * hooks
@@ -252,3 +254,11 @@ Currently, Skills has a view.
       * Implement other defensive measures so that paths can't be used for malicious intent
       * If the path ends in `.md`, assume the last segment is the name of the item they want to create.
   * If the location doesn't exist, create it.
+
+## Adding `Copy Name` and `Rename`
+
+* All Area Items should have a right-click option for `Rename`
+  * This options should be in the same group and above `Move To...`
+  * When an Area Item is selected, can F2 initiate rename?
+* All Area Items should have a right-click option for `Copy Name`, that will copy the name to the clipboard
+  * This option should be in the same group and below `Rename`

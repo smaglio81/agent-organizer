@@ -1,8 +1,8 @@
 {
   "name": "agent-organizer",
   "displayName": "Agent Organizer",
-  "description": "Agent Organizer Marketplace and Toolkit",
-  "version": "0.0.7",
+  "description": "AI Tool Organizer and Marketplace",
+  "version": "0.0.8",
   "icon": "resources/logo.png",
   "publisher": "smaglio81",
   "engines": {
@@ -558,6 +558,16 @@
         "icon": "$(add)"
       },
       {
+        "command": "agentOrganizer.renameItem",
+        "title": "Rename",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "agentOrganizer.copyItemName",
+        "title": "Copy Name",
+        "icon": "$(clippy)"
+      },
+      {
         "command": "agentOrganizer.addFile",
         "title": "Add File",
         "icon": "$(new-file)"
@@ -933,6 +943,16 @@
           "group": "1_move@4"
         },
         {
+          "command": "agentOrganizer.renameItem",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
+          "group": "0_rename@1"
+        },
+        {
+          "command": "agentOrganizer.copyItemName",
+          "when": "view == agentOrganizer.skills && viewItem =~ /^installedSkill/",
+          "group": "0_rename@2"
+        },
+        {
           "command": "agentOrganizer.syncSkill",
           "when": "view == agentOrganizer.skills && viewItem == installedSkill_newest",
           "group": "1_move@3"
@@ -1098,6 +1118,16 @@
           "group": "1_move@4"
         },
         {
+          "command": "agentOrganizer.renameItem",
+          "when": "viewItem =~ /^areaInstalledFolder/",
+          "group": "0_rename@1"
+        },
+        {
+          "command": "agentOrganizer.copyItemName",
+          "when": "viewItem =~ /^areaInstalledFolder/",
+          "group": "0_rename@2"
+        },
+        {
           "command": "agentOrganizer.showInMarketplace",
           "when": "viewItem =~ /^areaInstalledFolder/",
           "group": "3_marketplace@1"
@@ -1201,6 +1231,16 @@
           "command": "agentOrganizer.updatePlugins",
           "when": "viewItem =~ /^areaInstalledFile/ && view != agentOrganizer.plugins && view != agentOrganizer.instructions",
           "group": "1_move@4"
+        },
+        {
+          "command": "agentOrganizer.renameItem",
+          "when": "viewItem =~ /^areaInstalledFile/",
+          "group": "0_rename@1"
+        },
+        {
+          "command": "agentOrganizer.copyItemName",
+          "when": "viewItem =~ /^areaInstalledFile/",
+          "group": "0_rename@2"
         },
         {
           "command": "agentOrganizer.showInMarketplace",
@@ -1376,8 +1416,12 @@
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "package:vsix": "npx vsce package",
-    "install:vsix": "npx vsce package && node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-organizer-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('code --install-extension '+files[files.length-1], {stdio:'inherit'});\"",
-    "uninstall:vsix": "code --uninstall-extension smaglio81.agent-organizer",
+    "install:vsix": "npx vsce package && node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-organizer-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('code-insiders --install-extension '+files[files.length-1], {stdio:'inherit'});\"",
+    "uninstall:vsix": "code-insiders --uninstall-extension smaglio81.agent-organizer",
+    "install:vsix:kiro": "npx vsce package && node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-organizer-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('kiro --install-extension '+files[files.length-1], {stdio:'inherit'});\"",
+    "uninstall:vsix:kiro": "kiro --uninstall-extension smaglio81.agent-organizer",
+    "reinstall:vsix": "npm run uninstall:vsix && npm run install:vsix",
+    "reinstall:vsix:kiro": "npm run uninstall:vsix:kiro && npm run install:vsix:kiro",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",

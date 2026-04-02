@@ -127,6 +127,36 @@ export function todayStamp(): string {
     return `${yyyy}.${mm}.${dd}`;
 }
 
+/**
+ * Update the `name` field in a YAML frontmatter file (e.g. SKILL.md, *.agent.md).
+ * Replaces the first `name: ...` line in the frontmatter block.
+ */
+async function updateFrontmatterName(fileUri: vscode.Uri, newName: string): Promise<void> {
+    const raw = new TextDecoder().decode(await vscode.workspace.fs.readFile(fileUri));
+    if (!raw.startsWith('---')) { return; }
+    const endIdx = raw.indexOf('---', 3);
+    if (endIdx < 0) { return; }
+    const frontmatter = raw.substring(0, endIdx + 3);
+    const updated = frontmatter.replace(/^(name:\s*).+$/m, `$1${newName}`);
+    if (updated === frontmatter) { return; }
+    const result = updated + raw.substring(endIdx + 3);
+    await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(result));
+}
+
+/**
+ * Update the `name` field in a JSON definition file (e.g. plugin.json, hooks.json).
+ */
+async function updateJsonDefinitionName(fileUri: vscode.Uri, newName: string): Promise<void> {
+    const raw = new TextDecoder().decode(await vscode.workspace.fs.readFile(fileUri));
+    try {
+        const obj = JSON.parse(raw);
+        if (typeof obj.name === 'string') {
+            obj.name = newName;
+            await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(JSON.stringify(obj, null, 2) + '\n'));
+        }
+    } catch { /* not valid JSON, skip */ }
+}
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Agent Organizer extension is now active!');
 
@@ -1065,6 +1095,85 @@ export function activate(context: vscode.ExtensionContext) {
                 await installedProvider.refresh();
             } else {
                 refreshAreaProviders();
+            }
+        }),
+
+        // Copy the item name to the clipboard
+        vscode.commands.registerCommand('agentOrganizer.copyItemName', async (item: InstalledSkillTreeItem | AreaInstalledItemTreeItem) => {
+            const name = item instanceof InstalledSkillTreeItem
+                ? item.installedSkill.name
+                : item.installedItem.name;
+            await vscode.env.clipboard.writeText(name);
+            vscode.window.showInformationMessage(`Copied "${name}" to clipboard.`);
+        }),
+
+        // Rename an installed area item or skill
+        vscode.commands.registerCommand('agentOrganizer.renameItem', async (item: InstalledSkillTreeItem | AreaInstalledItemTreeItem) => {
+            if (!item) { return; }
+            const isSkill = item instanceof InstalledSkillTreeItem;
+            const oldName = isSkill ? item.installedSkill.name : item.installedItem.name;
+            const itemUri = isSkill ? item.skillUri : item.itemUri;
+            const isSingleFile = !isSkill && item.isSingleFile;
+            const area: ContentArea | undefined = isSkill ? 'skills' : (item as AreaInstalledItemTreeItem).area;
+
+            const newName = await vscode.window.showInputBox({
+                prompt: `Rename "${oldName}"`,
+                value: oldName,
+                validateInput: value => {
+                    if (!value?.trim()) { return 'Name is required'; }
+                    if (/[/\\]/.test(value)) { return 'Name cannot contain path separators'; }
+                    if (value.trim() === '.' || value.trim() === '..') { return "Name cannot be '.' or '..'"; }
+                    if (/\.\./.test(value.trim())) { return "Name cannot contain '..'"; }
+                    return undefined;
+                }
+            });
+            if (!newName || newName.trim() === oldName) { return; }
+            const trimmed = newName.trim();
+            const normalized = normalizeName(trimmed);
+
+            try {
+                if (isSingleFile) {
+                    // Single-file item: rename the file, preserving its extension
+                    const oldBaseName = itemUri.path.split('/').pop() || '';
+                    const dotIdx = oldBaseName.indexOf('.');
+                    const extension = dotIdx >= 0 ? oldBaseName.substring(dotIdx) : '';
+                    const newFileName = normalized + extension;
+                    const parentUri = vscode.Uri.joinPath(itemUri, '..');
+                    const newUri = vscode.Uri.joinPath(parentUri, newFileName);
+                    await vscode.workspace.fs.rename(itemUri, newUri);
+                    // Update frontmatter name in the renamed file
+                    await updateFrontmatterName(newUri, normalized);
+                } else {
+                    // Multi-file item (folder-based): rename the folder
+                    const parentUri = vscode.Uri.joinPath(itemUri, '..');
+                    const newUri = vscode.Uri.joinPath(parentUri, normalized);
+                    await vscode.workspace.fs.rename(itemUri, newUri);
+                    // Update the name in the definition file
+                    const def = area ? AREA_DEFINITIONS[area] : undefined;
+                    if (def) {
+                        const defFileName = def.definitionFile;
+                        if (defFileName) {
+                            const defUri = await findDefinitionFile(newUri, defFileName);
+                            if (defUri) {
+                                if (defFileName.endsWith('.json')) {
+                                    await updateJsonDefinitionName(defUri, normalized);
+                                } else {
+                                    await updateFrontmatterName(defUri, normalized);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (isSkill) {
+                    await installedProvider.refresh();
+                } else {
+                    refreshAreaProviders();
+                }
+                await syncInstalledStatus();
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                vscode.window.showErrorMessage(`Failed to rename "${oldName}": ${message}`);
             }
         }),
 

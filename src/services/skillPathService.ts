@@ -29,9 +29,11 @@ const DEFAULT_LOCATION_PREFIXES = [
     '.agents',
     '.claude',
     '.github',
+    '.kiro',
     '~/.agents',
     '~/.claude',
     '~/.copilot',
+    '~/.kiro',
 ];
 
 /**
@@ -51,11 +53,13 @@ const AREA_DIR_NAMES: Record<ContentArea, string> = {
 export class SkillPathService {
     private readonly DEFAULT_SCAN_LOCATIONS = [
         '.agents/skills',
-        '.github/skills',
         '.claude/skills',
+        '.github/skills',
+        '.kiro/skills',
         '~/.agents/skills',
+        '~/.claude/skills',
         '~/.copilot/skills',
-        '~/.claude/skills'
+        '~/.kiro/skills'
     ];
 
     constructor() {}
