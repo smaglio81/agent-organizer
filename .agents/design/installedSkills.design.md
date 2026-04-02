@@ -99,6 +99,8 @@ All actions appear in the `agentOrganizer.skills` view title bar.
 | Copy to... | `agentOrganizer.copySkill` | Always | Opens a QuickPick listing all scan locations (current location marked). Copies the skill folder to the selected location, keeping the original. |
 | Copy to Plugin... | `agentOrganizer.copyToPlugin` | Always | Opens a QuickPick listing all installed plugins. Copies the skill into the selected plugin's `skills/` subfolder. |
 | Update Plugins | `agentOrganizer.updatePlugins` | Always | Searches all installed plugins for a copy of this skill in their `skills/` subfolder and overwrites each found copy with the current version. Results shown via output channel. |
+| Copy Name | `agentOrganizer.copyItemName` | Always | Copies the skill name to the clipboard. |
+| Rename | `agentOrganizer.renameItem` | Always | Prompts for a new name and renames the skill folder. Also triggered by F2. |
 | Update older skill copies with latest | `agentOrganizer.syncSkill` | Newest (green) only | Copies this skill to all other locations that have an older copy. |
 | Get latest copy of skill | `agentOrganizer.getLatestSkill` | Older (orange) only | Replaces this copy with the newest version from another location. |
 | Delete | `agentOrganizer.uninstall` | Always | Deletes the skill folder (moved to trash, no confirmation prompt). |

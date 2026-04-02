@@ -1068,6 +1068,63 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }),
 
+        // Copy the item name to the clipboard
+        vscode.commands.registerCommand('agentOrganizer.copyItemName', async (item: InstalledSkillTreeItem | AreaInstalledItemTreeItem) => {
+            const name = item instanceof InstalledSkillTreeItem
+                ? item.installedSkill.name
+                : item.installedItem.name;
+            await vscode.env.clipboard.writeText(name);
+            vscode.window.showInformationMessage(`Copied "${name}" to clipboard.`);
+        }),
+
+        // Rename an installed area item or skill
+        vscode.commands.registerCommand('agentOrganizer.renameItem', async (item: InstalledSkillTreeItem | AreaInstalledItemTreeItem) => {
+            if (!item) { return; }
+            const isSkill = item instanceof InstalledSkillTreeItem;
+            const oldName = isSkill ? item.installedSkill.name : item.installedItem.name;
+            const itemUri = isSkill ? item.skillUri : item.itemUri;
+            const isSingleFile = !isSkill && item.isSingleFile;
+
+            const newName = await vscode.window.showInputBox({
+                prompt: `Rename "${oldName}"`,
+                value: oldName,
+                validateInput: value => {
+                    if (!value?.trim()) { return 'Name is required'; }
+                    if (/[/\\]/.test(value)) { return 'Name cannot contain path separators'; }
+                    if (value.trim() === '.' || value.trim() === '..') { return "Name cannot be '.' or '..'"; }
+                    if (/\.\./.test(value.trim())) { return "Name cannot contain '..'"; }
+                    return undefined;
+                }
+            });
+            if (!newName || newName.trim() === oldName) { return; }
+            const trimmed = newName.trim();
+
+            if (isSingleFile) {
+                // Single-file item: rename the file, preserving its extension
+                const oldBaseName = itemUri.path.split('/').pop() || '';
+                const dotIdx = oldBaseName.indexOf('.');
+                const extension = dotIdx >= 0 ? oldBaseName.substring(dotIdx) : '';
+                const normalized = normalizeName(trimmed);
+                const newFileName = normalized + extension;
+                const parentUri = itemUri.with({ path: itemUri.path.replace(/\/[^/]+$/, '') });
+                const newUri = vscode.Uri.joinPath(parentUri, newFileName);
+                await vscode.workspace.fs.rename(itemUri, newUri);
+            } else {
+                // Multi-file item (folder-based): rename the folder
+                const parentUri = itemUri.with({ path: itemUri.path.replace(/\/[^/]+$/, '') });
+                const normalized = normalizeName(trimmed);
+                const newUri = vscode.Uri.joinPath(parentUri, normalized);
+                await vscode.workspace.fs.rename(itemUri, newUri);
+            }
+
+            if (isSkill) {
+                await installedProvider.refresh();
+            } else {
+                refreshAreaProviders();
+            }
+            await syncInstalledStatus();
+        }),
+
         // Move skill to a different location
         vscode.commands.registerCommand('agentOrganizer.moveSkill', async (item: InstalledSkillTreeItem | AreaInstalledItemTreeItem | LocationTreeItem | AreaLocationTreeItem) => {
             if (item instanceof AreaLocationTreeItem) {
