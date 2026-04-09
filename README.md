@@ -17,7 +17,7 @@ Agent Organizer adds a sidebar panel to VS Code with views for each type of AI t
 
 Each view shows what you have installed locally, grouped by location. The Marketplace lets you browse repositories and download items with one click.
 
-![Agent Organizer](resources/docs/agent-organizer.png)
+![Agent Organizer](resources/agent-organizer.png)
 
 ## Getting started
 
