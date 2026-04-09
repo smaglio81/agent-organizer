@@ -1523,7 +1523,7 @@
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "package:vsix": "npx vsce package",
     "install:vsix": "npx vsce package && npm run install:vsix:only",
-    "install:vsix:only": "npx vsce package && node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-organizer-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('code-insiders --install-extension '+files[files.length-1], {stdio:'inherit'});\"",
+    "install:vsix:only": "node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-organizer-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('code-insiders --install-extension '+files[files.length-1], {stdio:'inherit'});\"",
     "uninstall:vsix": "code-insiders --uninstall-extension smaglio81.agent-organizer",
     "install:vsix:kiro": "npx vsce package && npm run install:vsix:kiro:only",
     "install:vsix:kiro:only": "node -e \"const fs=require('fs'); const files=fs.readdirSync('.').filter(f=>f.startsWith('agent-organizer-')&&f.endsWith('.vsix')).sort(); if(files.length) require('child_process').execSync('kiro --install-extension '+files[files.length-1], {stdio:'inherit'});\"",

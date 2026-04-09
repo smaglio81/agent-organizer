@@ -115,6 +115,7 @@ export function buildItemPathReference(item: PathReferenceTreeItem): string | un
         const itemUri = item instanceof SkillFolderTreeItem ? item.folderUri : item.fileUri;
         if (!rootItem) { return undefined; }
         const relativePath = getRelativeUriPath(rootItem.skillUri, itemUri);
+        if (relativePath === undefined) { return undefined; }
         return joinLogicalPath(rootItem.installedSkill.location, relativePath);
     }
 
@@ -122,6 +123,7 @@ export function buildItemPathReference(item: PathReferenceTreeItem): string | un
     const itemUri = item instanceof AreaItemFolderTreeItem ? item.folderUri : item.fileUri;
     if (!rootItem) { return undefined; }
     const relativePath = getRelativeUriPath(rootItem.itemUri, itemUri);
+    if (relativePath === undefined) { return undefined; }
     return joinLogicalPath(rootItem.installedItem.location, relativePath);
 }
 
