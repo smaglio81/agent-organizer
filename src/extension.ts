@@ -28,6 +28,17 @@ function validateItemName(value: string | undefined, label: string): string | un
 }
 
 /**
+ * Validate an area item name, including a check that normalization produces a non-empty result.
+ * Used by Rename and Duplicate input boxes for inline feedback.
+ */
+function validateAreaItemName(value: string | undefined): string | undefined {
+    const base = validateItemName(value, 'Name');
+    if (base) { return base; }
+    if (!normalizeName(value!.trim())) { return 'Name must contain at least one alphanumeric character'; }
+    return undefined;
+}
+
+/**
  * Recursively search for a file by name within a directory.
  * Returns the URI of the first match, or undefined if not found.
  */
@@ -1185,14 +1196,10 @@ export function activate(context: vscode.ExtensionContext) {
             const newName = await vscode.window.showInputBox({
                 prompt: `Duplicate "${oldName}" as`,
                 value: `${oldName}-copy`,
-                validateInput: value => validateItemName(value, 'Name')
+                validateInput: validateAreaItemName
             });
             if (!newName) { return; }
             const normalized = normalizeName(newName.trim());
-            if (!normalized) {
-                vscode.window.showErrorMessage('Name must contain at least one alphanumeric character.');
-                return;
-            }
 
             try {
                 const parentUri = vscode.Uri.joinPath(itemUri, '..');
@@ -1289,15 +1296,11 @@ export function activate(context: vscode.ExtensionContext) {
             const newName = await vscode.window.showInputBox({
                 prompt: `Rename "${oldName}"`,
                 value: oldName,
-                validateInput: value => validateItemName(value, 'Name')
+                validateInput: validateAreaItemName
             });
             if (!newName || newName.trim() === oldName) { return; }
             const trimmed = newName.trim();
             const normalized = normalizeName(trimmed);
-            if (!normalized) {
-                vscode.window.showErrorMessage('Name must contain at least one alphanumeric character.');
-                return;
-            }
 
             try {
                 if (isSingleFile) {
