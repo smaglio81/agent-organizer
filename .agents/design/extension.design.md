@@ -72,8 +72,8 @@ Each content area (except Skills, which has its own dedicated provider) uses the
 | Node Type | Context Value | Actions |
 |---|---|---|
 | Location | `areaLocation` | Add {Area}, Move to..., Copy to..., Delete, Reveal in File Explorer |
-| Multi-file item | `areaInstalledFolder` | Add File, Add Folder, Copy #{path}, Copy Absolute Path, Rename, Move to..., Copy to..., Copy to Plugin... (not in Plugins view), Update Plugins (not in Plugins view), Copy Name, Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
-| Single-file item | `areaInstalledFile` | Copy #{path}, Copy Absolute Path, Rename, Move to..., Copy to..., Copy to Plugin..., Update Plugins, Copy Name, Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
+| Multi-file item | `areaInstalledFolder` | Add File, Add Folder, Copy #{path}, Copy Absolute Path, Rename, Copy Name, Duplicate, Move to..., Copy to..., Copy to Plugin... (not in Plugins view), Update Plugins (not in Plugins view), Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
+| Single-file item | `areaInstalledFile` | Copy #{path}, Copy Absolute Path, Rename, Copy Name, Duplicate, Move to..., Copy to..., Copy to Plugin..., Update Plugins, Show in Marketplace, Reveal in File Explorer, Delete (inline + menu), View Installed Item (inline) |
 | Subfolder | `areaItemFolder` | Add File, Add Folder, Copy #{path}, Copy Absolute Path, Delete, Reveal in File Explorer |
 | File | `areaItemFile` | Copy #{path}, Copy Absolute Path, Rename, Delete, Reveal in File Explorer |
 

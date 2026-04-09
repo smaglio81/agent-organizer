@@ -54,6 +54,7 @@ Editing a file automatically triggers re-comparison. File watchers cover both wo
 | Copy Absolute Path | Items, subfolders, files | Copies the fully resolved filesystem path to the clipboard |
 | Rename | Items | Prompts for a new name and renames the item on disk, updating the name in its definition file |
 | Copy Name | Items | Copies the item name to the clipboard |
+| Duplicate | Items | Creates a copy of the item with a new name in the same location |
 | Move to... | Items and location folders | Moves the item to a different location via a quick pick selector |
 | Copy to... | Items and location folders | Copies the item to a different location, keeping the original |
 | Copy to Plugin... | Items (not in Plugins or Instructions views) | Copies the item into a selected plugin's area subfolder |

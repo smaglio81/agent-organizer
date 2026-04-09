@@ -339,31 +339,35 @@ export class MarketplaceTreeDataProvider implements vscode.TreeDataProvider<Mark
             return;
         }
 
-        await Promise.allSettled(repositories.map(async repo => {
-            try {
-                const discovered = await this.githubClient.discoverAreas(repo.owner, repo.repo, repo.branch || 'main');
+        // Process repos with limited concurrency so the event loop has breathing
+        // room for local filesystem operations (installed skill scans, etc.).
+        const concurrency = 2;
+        const queue = [...repositories];
+        const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+            while (queue.length > 0) {
+                const repo = queue.shift()!;
+                try {
+                    const discovered = await this.githubClient.discoverAreas(repo.owner, repo.repo, repo.branch || 'main');
 
-                if (Object.keys(discovered).length > 0) {
-                    const content = await this.githubClient.fetchRepoContent(repo, discovered);
+                    if (Object.keys(discovered).length > 0) {
+                        const content = await this.githubClient.fetchRepoContent(repo, discovered);
+                        if (generation !== this.loadGeneration) { return; }
+                        this.skills.push(...content.skills);
+                        this.fileItems.push(...content.fileItems);
+                    }
+                } catch (error) {
                     if (generation !== this.loadGeneration) { return; }
-                    this.skills.push(...content.skills);
-                    this.fileItems.push(...content.fileItems);
+                    const message = error instanceof Error ? error.message : String(error);
+                    this.failures.push({ repo, error: message });
+                } finally {
+                    if (generation !== this.loadGeneration) { return; }
+                    this.loadingRepos = this.loadingRepos.filter(r => !isSameRepository(r, repo));
+                    this.isLoading = this.loadingRepos.length > 0;
+                    this._onDidChangeTreeData.fire();
                 }
-            } catch (error) {
-                if (generation !== this.loadGeneration) {
-                    return;
-                }
-                const message = error instanceof Error ? error.message : String(error);
-                this.failures.push({ repo, error: message });
-            } finally {
-                if (generation !== this.loadGeneration) {
-                    return;
-                }
-                this.loadingRepos = this.loadingRepos.filter(r => !isSameRepository(r, repo));
-                this.isLoading = this.loadingRepos.length > 0;
-                this._onDidChangeTreeData.fire();
             }
-        }));
+        });
+        await Promise.allSettled(workers);
     }
 
     /**

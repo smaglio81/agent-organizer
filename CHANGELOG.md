@@ -13,9 +13,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - "Copy Absolute Path" right-click option on all items, subfolders, and files. Copies the fully resolved filesystem path (with capitalized drive letter on Windows).
 - Path references are copied in chat-ready format (for example: `#~/.copilot/skills/my-skill/docs/guide.md`).
 - Unit tests for path-reference building across installed skill and area tree nodes.
+- "Duplicate" right-click option on all installed area items and skills. Creates a copy of the item with a new name in the same location, updating the definition file name.
 
 ### Changed
 
+- Marketplace repository loading throttled to 2 concurrent fetches (down from all at once). Prevents event loop starvation that was delaying local installed item scans.
 - Prompt workflow files moved under `.github/prompts/`.
 - Version bumped from `0.0.8` to `0.1.0`.
 
