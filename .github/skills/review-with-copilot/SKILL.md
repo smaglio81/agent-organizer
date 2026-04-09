@@ -1,6 +1,6 @@
 ---
 name: review-with-copilot
-description: A loop for continuously reviewing the Copilot comments on a pull request until all comments are resolved by implmenetation or explanation.
+description: A loop for continuously reviewing the Copilot comments on a pull request until all comments are resolved by implementation or explanation.
 metadata:
   version: "2026.04.08"
 ---
@@ -15,7 +15,7 @@ metadata:
 * If you implemented any changes
   * Commit the changes with a comment and push the changes
   * Ask for Copilot to review the changes
-* Monitor for Copilot to finish it's review.
+* Monitor for Copilot to finish its review.
 * Repeat until you determine no further changes should be made.
 
 ## How to Request a Copilot Review

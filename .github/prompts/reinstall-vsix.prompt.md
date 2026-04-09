@@ -1,5 +1,5 @@
 ---
-name: resinstall-vsix
+name: reinstall-vsix
 description: Call reinstall
 ---
 
