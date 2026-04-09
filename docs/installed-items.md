@@ -28,7 +28,7 @@ Every area view has these toolbar buttons:
 | Expand All | Expand all location groups |
 | Collapse All | Collapse all location groups |
 
-![Toolbar Buttons](../resources/area-views-toolbar-buttons.png)
+![Toolbar Buttons](../resources/docs/area-views-toolbar-buttons.png)
 
 ## Duplicate detection
 
@@ -43,15 +43,18 @@ When the same item name appears in multiple locations, icons change color:
 
 Editing a file automatically triggers re-comparison. File watchers cover both workspace and home directory locations.
 
-![Color-coded icons](../resources/installed-skills-color-coded-icons.png)
+![Color-coded icons](../resources/docs/installed-skills-color-coded-icons.png)
 
 ## Right-click options
 
 | Action | Available on | What it does |
 |---|---|---|
 | Add {Area} | Location folders | Creates a new item with area-specific scaffolding at that location |
+| Copy #{path} | Items, subfolders, files | Copies a chat-ready item path (starting with `#`) to the clipboard |
+| Copy Absolute Path | Items, subfolders, files | Copies the fully resolved filesystem path to the clipboard |
 | Rename | Items | Prompts for a new name and renames the item on disk, updating the name in its definition file |
 | Copy Name | Items | Copies the item name to the clipboard |
+| Duplicate | Items | Creates a copy of the item with a new name in the same location |
 | Move to... | Items and location folders | Moves the item to a different location via a quick pick selector |
 | Copy to... | Items and location folders | Copies the item to a different location, keeping the original |
 | Copy to Plugin... | Items (not in Plugins or Instructions views) | Copies the item into a selected plugin's area subfolder |

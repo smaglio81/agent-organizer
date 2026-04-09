@@ -90,6 +90,8 @@ On load/refresh, each repository's tree is scanned via the Git Trees API (1 API 
 
 Content is fetched using the Git Trees API (1 call per repo, recursive) + `raw.githubusercontent.com` for file content (no rate limit). Definition files (`SKILL.md`, `POWER.md`, `plugin.json`, `README.md`) are fetched via raw URLs to extract names and descriptions. `plugin.json` files are parsed as JSON; all others use YAML frontmatter parsing.
 
+Repositories are loaded progressively with a concurrency limit of 2. This prevents event loop starvation that would otherwise delay local filesystem operations (installed item scans) when many repositories are configured.
+
 Results are cached in memory per `agentOrganizer.cacheTimeout` seconds.
 
 ---
