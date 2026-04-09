@@ -2,65 +2,78 @@
 name: review-with-copilot
 description: A loop for continuously reviewing the Copilot comments on a pull request until all comments are resolved by implementation or explanation.
 metadata:
-  version: "2026.04.08"
+  version: "2026.04.09"
 ---
 
 # Review with Copilot
 
-## Goals
+## Workflow
 
-* Review the comments made by Copilot in the pull request.
-* Determine to either implement the suggested changes or not.
-  * Either way, leave a comment and resolve the comment.
-* If you implemented any changes
-  * Commit the changes with a comment and push the changes
-  * Ask for Copilot to review the changes
-* Monitor for Copilot to finish its review.
-* Repeat until you determine no further changes should be made.
+1. Determine the PR number from the current branch (use `gh pr list --head {branch} --state open`).
+2. Load the `.env` file to set `GH_TOKEN` before every `gh` command.
+3. Fetch all review threads using GraphQL (see below). Filter to only **unresolved** threads.
+4. For each unresolved thread:
+   a. Read the comment body, file path, and line range.
+   b. Decide whether to implement the suggestion or decline it.
+   c. If implementing: make the code change.
+   d. If declining: note the reason.
+   e. Resolve the thread using the GraphQL mutation (see below).
+5. If any code changes were made:
+   a. Commit and push.
+   b. Post a PR comment summarizing what was fixed and what was declined.
+   c. Request a new Copilot review (see below).
+   d. **Poll for the review to complete** (see Polling section below).
+   e. Go back to step 3.
+6. If no unresolved threads remain (or only declined items), the loop is done.
+
+## Polling for Copilot Review Completion
+
+After requesting a review, Copilot typically takes 1-3 minutes. Poll using this approach:
+
+1. Record the current review count: `gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews --jq 'length'`
+2. Wait 60 seconds (`Start-Sleep -Seconds 60`).
+3. Check the review count again. If it increased, the new review is in.
+4. If not, wait another 60 seconds and retry. Give up after 5 attempts (5 minutes) and tell the user.
 
 ## How to Request a Copilot Review
-
-Copilot reviews can be triggered via the GitHub API by adding `copilot-pull-request-reviewer[bot]` as a requested reviewer:
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr_number}/requested_reviewers \
   -f "reviewers[]=copilot-pull-request-reviewer[bot]"
 ```
 
-This works even if Copilot has already reviewed the PR — it will re-review against the latest commit.
-
-## How to Read Copilot Review Comments
-
-Copilot's comments are stored as PR review comments (not regular issue comments). Fetch them with:
-
-```bash
-gh api repos/{owner}/{repo}/pulls/{pr_number}/comments
-```
-
-Each comment includes `body` (the suggestion), `path` (the file), `line`/`start_line` (the code range), and `id` (for replying).
-
-## How to Reply to a Copilot Comment
-
-Use the issue comments endpoint to post a general reply on the PR:
-
-```bash
-gh pr comment {pr_number} --body "Your response here"
-```
-
-## How to Check if Conversations are Resolved
+## How to Read Unresolved Threads (GraphQL)
 
 The REST API does not expose the resolved state. Use GraphQL:
 
 ```bash
-gh api graphql -f query='{ repository(owner: "{owner}", name: "{repo}") { pullRequest(number: {pr_number}) { reviewThreads(first: 50) { nodes { id isResolved comments(first: 1) { nodes { databaseId body } } } } } } }'
+gh api graphql -f query='{ repository(owner: "{owner}", name: "{repo}") {
+  pullRequest(number: {pr_number}) {
+    reviewThreads(first: 50) {
+      nodes { id isResolved comments(first: 1) { nodes { databaseId body path: resourcePath } } }
+    }
+  }
+} }'
 ```
 
-Each thread has `isResolved` (boolean) and an `id` (node ID needed for resolving).
+Filter results to `isResolved == false`. Each thread has:
+- `id` — node ID (needed for resolving)
+- `comments.nodes[0].databaseId` — maps to the REST comment ID
+- `comments.nodes[0].body` — the suggestion text
 
-## How to Resolve a Conversation Thread
+To get the file path and line numbers for a comment, use the REST API with the `databaseId`:
+```bash
+gh api repos/{owner}/{repo}/pulls/comments/{databaseId}
+```
 
-Use the GraphQL `resolveReviewThread` mutation with the thread's node ID:
+## How to Resolve a Thread
 
 ```bash
 gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "{thread_node_id}"}) { thread { isResolved } } }'
+```
+
+## How to Post a PR Comment
+
+```bash
+gh pr comment {pr_number} --body "Your response here"
 ```
