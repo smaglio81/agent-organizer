@@ -1195,6 +1195,10 @@ export function activate(context: vscode.ExtensionContext) {
             });
             if (!newName) { return; }
             const normalized = normalizeName(newName.trim());
+            if (!normalized) {
+                vscode.window.showErrorMessage('Name must contain at least one alphanumeric character.');
+                return;
+            }
 
             try {
                 const parentUri = vscode.Uri.joinPath(itemUri, '..');
@@ -1297,6 +1301,10 @@ export function activate(context: vscode.ExtensionContext) {
             if (!newName || newName.trim() === oldName) { return; }
             const trimmed = newName.trim();
             const normalized = normalizeName(trimmed);
+            if (!normalized) {
+                vscode.window.showErrorMessage('Name must contain at least one alphanumeric character.');
+                return;
+            }
 
             try {
                 if (isSingleFile) {
