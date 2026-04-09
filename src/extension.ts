@@ -1209,7 +1209,12 @@ export function activate(context: vscode.ExtensionContext) {
                     const extension = dotIdx >= 0 ? oldBaseName.substring(dotIdx) : '';
                     const newUri = vscode.Uri.joinPath(parentUri, normalized + extension);
                     await vscode.workspace.fs.copy(itemUri, newUri);
-                    await updateFrontmatterName(newUri, normalized);
+                    // Update name in the copied file based on file type
+                    if (extension === '.json') {
+                        await updateJsonDefinitionName(newUri, normalized);
+                    } else {
+                        await updateFrontmatterName(newUri, normalized);
+                    }
                 } else {
                     // Multi-file: copy the entire folder
                     const newUri = vscode.Uri.joinPath(parentUri, normalized);
@@ -1316,8 +1321,12 @@ export function activate(context: vscode.ExtensionContext) {
                     const parentUri = vscode.Uri.joinPath(itemUri, '..');
                     const newUri = vscode.Uri.joinPath(parentUri, newFileName);
                     await vscode.workspace.fs.rename(itemUri, newUri);
-                    // Update frontmatter name in the renamed file
-                    await updateFrontmatterName(newUri, normalized);
+                    // Update name in the renamed file based on file type
+                    if (extension === '.json') {
+                        await updateJsonDefinitionName(newUri, normalized);
+                    } else {
+                        await updateFrontmatterName(newUri, normalized);
+                    }
                 } else {
                     // Multi-file item (folder-based): rename the folder
                     const parentUri = vscode.Uri.joinPath(itemUri, '..');
