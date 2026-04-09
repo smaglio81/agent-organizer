@@ -1210,7 +1210,7 @@ export function activate(context: vscode.ExtensionContext) {
                     const newUri = vscode.Uri.joinPath(parentUri, normalized + extension);
                     await vscode.workspace.fs.copy(itemUri, newUri);
                     // Update name in the copied file based on file type
-                    if (extension === '.json') {
+                    if (oldBaseName.toLowerCase().endsWith('.json')) {
                         await updateJsonDefinitionName(newUri, normalized);
                     } else {
                         await updateFrontmatterName(newUri, normalized);
@@ -1322,7 +1322,7 @@ export function activate(context: vscode.ExtensionContext) {
                     const newUri = vscode.Uri.joinPath(parentUri, newFileName);
                     await vscode.workspace.fs.rename(itemUri, newUri);
                     // Update name in the renamed file based on file type
-                    if (extension === '.json') {
+                    if (oldBaseName.toLowerCase().endsWith('.json')) {
                         await updateJsonDefinitionName(newUri, normalized);
                     } else {
                         await updateFrontmatterName(newUri, normalized);
