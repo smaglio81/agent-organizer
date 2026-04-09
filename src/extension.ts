@@ -1185,13 +1185,7 @@ export function activate(context: vscode.ExtensionContext) {
             const newName = await vscode.window.showInputBox({
                 prompt: `Duplicate "${oldName}" as`,
                 value: `${oldName}-copy`,
-                validateInput: value => {
-                    if (!value?.trim()) { return 'Name is required'; }
-                    if (/[/\\]/.test(value)) { return 'Name cannot contain path separators'; }
-                    if (value.trim() === '.' || value.trim() === '..') { return "Name cannot be '.' or '..'"; }
-                    if (/\.\./.test(value.trim())) { return "Name cannot contain '..'"; }
-                    return undefined;
-                }
+                validateInput: value => validateItemName(value, 'Name')
             });
             if (!newName) { return; }
             const normalized = normalizeName(newName.trim());
@@ -1295,13 +1289,7 @@ export function activate(context: vscode.ExtensionContext) {
             const newName = await vscode.window.showInputBox({
                 prompt: `Rename "${oldName}"`,
                 value: oldName,
-                validateInput: value => {
-                    if (!value?.trim()) { return 'Name is required'; }
-                    if (/[/\\]/.test(value)) { return 'Name cannot contain path separators'; }
-                    if (value.trim() === '.' || value.trim() === '..') { return "Name cannot be '.' or '..'"; }
-                    if (/\.\./.test(value.trim())) { return "Name cannot contain '..'"; }
-                    return undefined;
-                }
+                validateInput: value => validateItemName(value, 'Name')
             });
             if (!newName || newName.trim() === oldName) { return; }
             const trimmed = newName.trim();
