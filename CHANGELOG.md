@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### Changed
 
+- The Visual Studio Marketplace reviewer (representative:80c2ec86) felt that the new extension name "Agent Organizer" was too close the name of the original extension this was hard forked from. They required a rename and new description.
 - Renamed extension display name from "Agent Organizer" to "AI Tools Organizer".
 - Renamed GitHub repository from `agent-organizer` to `ai-tools-organizer`.
 - All command IDs, view IDs, configuration keys, and context keys updated from `agentOrganizer.*` to `AIToolsOrganizer.*`.
