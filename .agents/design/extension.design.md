@@ -134,3 +134,9 @@ The Skills view uses its own dedicated `InstalledSkillsTreeDataProvider` with ad
 ## File Watchers
 
 The Skills view watches for `SKILL.md` creation/deletion events in workspace skill folders with debounced duplicate status recomputation. Each area view creates its own file watchers for its specific file patterns (e.g., `**/{areaDir}/*/{definitionFile}` for multi-file areas, `**/{areaDir}/**/*{suffix}` for single-file areas), including watchers on the area's configured default download location. Watchers are recreated on refresh.
+
+---
+
+## Settings Migration
+
+On activation, `migrateSettings()` checks for existing user or workspace settings under the old `agentOrganizer.*` prefix and copies them to `AIToolsOrganizer.*`. Migrated keys: `skillRepositories`, `installLocations`, `githubToken`, `cacheTimeout`. The migration runs once per install, tracked by the `AIToolsOrganizer.settingsMigrated` global state flag. Existing new-prefix values are not overwritten.

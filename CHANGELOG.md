@@ -4,6 +4,19 @@ All notable changes to the "ai-tools-organizer" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.2.0]
+
+### Changed
+
+- Renamed extension display name from "Agent Organizer" to "AI Tools Organizer".
+- Renamed GitHub repository from `agent-organizer` to `ai-tools-organizer`.
+- All command IDs, view IDs, configuration keys, and context keys updated from `agentOrganizer.*` to `AIToolsOrganizer.*`.
+- Renamed image assets from `agent-organizer-*` to `ai-tools-organizer-*`.
+
+### Added
+
+- Settings migration: on first activation, existing user/workspace settings under the old `agentOrganizer.*` prefix are automatically copied to `AIToolsOrganizer.*`. Migration runs once and is tracked via global state.
+
 ## [0.1.0]
 
 ### Added
